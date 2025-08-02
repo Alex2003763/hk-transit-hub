@@ -112,99 +112,64 @@ const TripPlannerPanel: React.FC<TripPlannerPanelProps> = ({ allRoutes, location
         );
     }, []);
 
-    const stripParentheses = (text: string | undefined | null): string => {
-        if (!text) return '';
-        return text.replace(/\s*\([^)]*\)\s*/g, '').trim();
-    };
-
     const promptContext = useMemo(() => {
-        const kmbRouteData = allRoutes
-            .filter(r => r.bound === 'O') // Use only outbound for a cleaner list
-            .map(r => `Route ${r.route}: ${stripParentheses(r.orig_tc)} to ${stripParentheses(r.dest_tc)}`)
-            .join('\n');
-            
-        const mtrLineData = mtrLines.map(line => {
-            const stations = mtrStations[line.code].map(s => stripParentheses(s.name_tc)).join(', ');
-            return `MTR ${line.name} (${line.code}): ${stations}`;
-        }).join('\n');
-        
-        const validLocationsData = locations.map(l => stripParentheses(l.name_tc)).join('\n');
-
         return `
 You are an expert Hong Kong transportation planner. Your goal is to generate two distinct trip plans: the absolute CHEAPEST and the absolute FASTEST.
 
-**//-- Core Task --//**
-1.  **Generate Two Plans:** Create two separate, complete trip plans for the user's request.
-    -   **Plan 1: The CHEAPEST.** This plan must prioritize the lowest possible total cost, even if it takes longer.
-    -   **Plan 2: The FASTEST.** This plan must prioritize the minimum possible travel time, even if it costs more.
-2.  **Use Google Search Extensively:** You MUST use Google Search to find:
-    -   **Fares:** "KMB route [route number] price", "MTR fare from [station] to [station] Octopus". Search for exact fares.
-    -   **Travel Times:** Use Google Maps for realistic travel time estimates for MTR, bus, and walking segments.
-    -   **Service Status:** Check for any real-time disruptions, delays, or route changes for all relevant transport modes.
-3.  **Strict Data Adherence:**
-    -   All transport hubs (stops/stations) MUST EXACTLY MATCH a name from the "VALID TRANSPORT HUBS" list.
-    -   Bus routes must come from "AVAILABLE KMB ROUTES".
-    -   MTR directions must be the terminal station name in Traditional Chinese (e.g., "往荃灣").
-4.  **Infer Locations:** If the start/end points are landmarks (e.g., "K11 Musea"), use Google Search to find the nearest official transport hub from the provided lists and use that exact name.
+**//-- Core Task & Rules --//**
+1.  **Generate Two Plans:** Create two separate, complete trip plans: one focused on the lowest cost (cheapest_plan), and one on the minimum time (fastest_plan).
+2.  **Use Your Knowledge & Google Search:** You have built-in knowledge of Hong Kong's MTR, buses, etc. You MUST use Google Search to find real-time data:
+    -   **Fares:** Get exact Octopus card fares for MTR and bus routes.
+    -   **Travel Times:** Use Google Maps for realistic time estimates (including walking).
+    -   **Service Status:** Check for any transport disruptions or delays.
+3.  **Location Inference:** If a start/end point is a landmark (e.g., "K11 Musea"), find the nearest official MTR station or major bus stop and use its exact name in Traditional Chinese.
+4.  **Language:** All summaries, instructions, and names in the plan must be in **Traditional Chinese**. The only exception is 'current_conditions', which should be in English.
 
-**//-- Output Format: JSON ONLY --//**
-1.  You MUST return a single, valid JSON object in a \`\`\`json markdown block.
-2.  Your entire response MUST be ONLY the JSON object. Do NOT include any text, conversation, or explanation outside the JSON block.
-3.  The JSON object MUST contain two top-level keys: 'cheapest_plan' and 'fastest_plan'.
-4.  The structure MUST be exactly as follows:
-    \`\`\`
-    {
-      "cheapest_plan": {
-        "current_conditions": "Brief note on service status for this plan (in English).",
-        "total_time_minutes": 55,
-        "total_cost_hkd": 12.5,
-        "plan": [
-          {
-            "type": "walk" | "bus" | "mtr",
-            "summary": "A brief summary of this step in Traditional Chinese.",
-            "details": { ... },
-            "duration_minutes": 10,
-            "cost_hkd": 0
-          }
-        ]
+**//-- CRITICAL: Output Format --//**
+-   Your entire response MUST be a single, valid JSON object.
+-   Do NOT include any text, conversation, or explanation outside of the JSON object.
+-   Your response must start with \`{\` and end with \`}\`. No markdown \`\`\`json blocks.
+-   The JSON structure must be exactly as follows:
+
+{
+  "cheapest_plan": {
+    "current_conditions": "Brief note on service status (e.g., 'All services normal').",
+    "total_time_minutes": 55,
+    "total_cost_hkd": 12.5,
+    "plan": [
+      {
+        "type": "walk",
+        "summary": "步行到尖沙咀碼頭巴士總站",
+        "details": { "instruction": "從起點步行約5分鐘即可到達巴士總站。" },
+        "duration_minutes": 5,
+        "cost_hkd": 0
       },
-      "fastest_plan": {
-        "current_conditions": "Brief note on service status for this plan (in English).",
-        "total_time_minutes": 30,
-        "total_cost_hkd": 22.0,
-        "plan": [ ... ]
+      {
+        "type": "bus",
+        "summary": "乘搭九巴 1A 號線",
+        "details": { "route": "1A", "boarding_stop": "尖沙咀碼頭", "alighting_stop": "旺角街市", "num_stops": 5 },
+        "duration_minutes": 20,
+        "cost_hkd": 5.2
+      },
+      {
+        "type": "mtr",
+        "summary": "乘搭荃灣綫往荃灣",
+        "details": { "line": "荃灣綫", "boarding_station": "尖沙咀", "alighting_station": "旺角", "direction": "往荃灣", "num_stops": 2 },
+        "duration_minutes": 5,
+        "cost_hkd": 5.5
       }
-    }
-    \`\`\`
-5.  **Details Object Structure:**
-    -   **type: "walk"**: \`{ "instruction": "Walking directions in Traditional Chinese." }\`
-    -   **type: "bus"**: \`{ "route": "1A", "boarding_stop": "尖沙咀碼頭", "alighting_stop": "旺角街市", "num_stops": 5 }\`
-    -   **type: "mtr"**: \`{ "line": "荃灣綫", "boarding_station": "尖沙咀", "alighting_station": "旺角", "direction": "往荃灣", "num_stops": 2 }\`
-6.  **Cost and Time Rules:**
-    -   The 'cost_hkd' for a walk step is always 0.
-    -   The 'duration_minutes' must be a realistic estimate for each step.
+    ]
+  },
+  "fastest_plan": {
+    "current_conditions": "All services normal.",
+    "total_time_minutes": 30,
+    "total_cost_hkd": 22.0,
+    "plan": [ /* similar structure to cheapest_plan */ ]
+  }
+}
+`;
+    }, []);
 
-**//-- Reference Data --//**
-
-**AVAILABLE KMB ROUTES (Route: Origin to Destination):**
----
-${kmbRouteData}
----
-
-**AVAILABLE MTR LINES & STATIONS:**
----
-${mtrLineData}
----
-
-**VALID TRANSPORT HUBS (Bus Stops & MTR Stations - Use these exact TC names):**
----
-${validLocationsData}
----
-
-Now, based on this data and live information from Google Search, generate a multi-modal trip plan.
-        `;
-    }, [allRoutes, locations]);
-    
     const handleGetPlan = useCallback(async () => {
         if (isButtonDisabled) return;
 
@@ -217,54 +182,28 @@ Now, based on this data and live information from Google Search, generate a mult
                 throw new Error("API key is missing.");
             }
 
-            // Prepare the content with location context if available
             let contentText = `Generate a trip plan in Hong Kong from "${origin}" to "${destination}".`;
             if (userLocation && origin.includes('Current Location')) {
-                contentText += ` The starting location coordinates are: Latitude ${userLocation.lat}, Longitude ${userLocation.lng}.`;
+                contentText += ` The user's starting coordinates are: Latitude ${userLocation.lat}, Longitude ${userLocation.lng}.`;
             }
 
-            // Use direct fetch to the proxy with Google Search tools
             const requestBody = {
-                contents: [{
-                    parts: [{
-                        text: contentText
-                    }]
-                }],
+                contents: [{ parts: [{ text: contentText }] }],
                 systemInstruction: {
-                    parts: [{
-                        text: promptContext + `
-
-                    IMPORTANT: You have access to Google Search. Use it to:
-                    1. Find real-time information about Hong Kong public transport
-                    2. Check for any service disruptions or delays
-                    3. Get current operating hours and schedules
-                    4. Find alternative routes if needed
-                    5. Verify bus stop locations and accessibility
-                      
-                    When searching, use specific queries like:
-                    - "Hong Kong KMB bus route [route_number] current status"
-                    - "MTR [line_name] service status today"
-                    - "[location_name] Hong Kong public transport access"
-                    - "Hong Kong transport disruptions today"
-
-                    Always provide the most current and accurate information available.
-
-CRITICAL OUTPUT FORMAT REQUIREMENT:
-Your response must be ONLY a valid JSON object. Do not include any markdown formatting, code blocks, explanations, or any other text. Start your response directly with { and end with }. The JSON must be parseable and follow the exact schema specified above.`
-                    }]
+                    parts: [{ text: promptContext }]
                 },
                 tools: [{
-                     googleSearch: {}
+                    googleSearch: {}
                 }],
                 generationConfig: {
-                    temperature: 0.7,
+                    temperature: 0.2, // Lower temperature for more predictable, structured output
                     topK: 40,
                     topP: 0.95,
-                    maxOutputTokens: 3072,
+                    maxOutputTokens: 4096,
                 }
             };
 
-            console.log('Making request to AI proxy...');
+            console.log('Making request to AI proxy with simplified prompt...');
             const response = await fetch(`https://ai-proxy.chatwise.app/generativelanguage/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: {
@@ -289,42 +228,37 @@ Your response must be ONLY a valid JSON object. Do not include any markdown form
             const textResponse = responseData.candidates[0].content.parts[0].text;
             let parsedPlan: any;
 
-            // First try to parse as pure JSON (new format)
+            // Robust JSON parsing: find the first '{' and the last '}'
             try {
-                parsedPlan = JSON.parse(textResponse.trim());
-            } catch (e) {
-                // Fallback: try to extract JSON from markdown block (old format)
-                const jsonMatch = textResponse.match(/```json\n([\s\S]*?)\n```/);
-
-                if (jsonMatch && jsonMatch[1]) {
-                    try {
-                        parsedPlan = JSON.parse(jsonMatch[1]);
-                    } catch (e2) {
-                        console.error("Failed to parse JSON from markdown block", e2);
-                        throw new Error("The AI returned a malformed plan. Could not understand the format.");
-                    }
-                } else {
-                    console.error("Failed to parse response as JSON", e);
-                    console.log("Raw response:", textResponse);
-                    throw new Error("The AI returned a response that was not in the expected JSON format.");
+                const startIndex = textResponse.indexOf('{');
+                const endIndex = textResponse.lastIndexOf('}');
+                if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+                    throw new Error("No valid JSON object found in the response.");
                 }
+                const jsonString = textResponse.substring(startIndex, endIndex + 1);
+                parsedPlan = JSON.parse(jsonString);
+            } catch (e) {
+                console.error("Failed to parse JSON from response", e);
+                console.log("Raw response:", textResponse);
+                throw new Error("Sorry, I couldn't generate a trip plan. The AI returned a response that was not in the expected JSON format.");
             }
-            
+
             if (!parsedPlan || !parsedPlan.cheapest_plan || !parsedPlan.fastest_plan) {
-                 throw new Error("The generated plan is incomplete or in an invalid format.");
+                throw new Error("The generated plan is incomplete or in an invalid format.");
             }
-            
+
             setPlan(parsedPlan);
 
         } catch (err) {
             console.error("Error generating trip plan:", err);
             const errorMessage = (err instanceof Error) ? err.message : String(err);
-             if (errorMessage.toLowerCase().includes('api key not valid')) {
+            if (errorMessage.toLowerCase().includes('api key not valid')) {
                 setError("Your API key appears to be invalid. Please check it in the Settings tab.");
             } else if (errorMessage.includes('API key is missing')) {
                 setError("Please set your Gemini API key in the Settings tab to use the planner.");
             } else {
-                setError(`Sorry, I couldn't generate a trip plan. ${errorMessage}`);
+                // Pass the specific error message to the user
+                setError(errorMessage);
             }
         } finally {
             setLoading(false);

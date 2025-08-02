@@ -16,16 +16,17 @@ export default defineConfig(({ mode }) => {
             runtimeCaching: [
               {
                 urlPattern: /^https:\/\/data\.etabus\.gov\.hk\/.*/i,
-                handler: 'NetworkFirst',
+                handler: 'StaleWhileRevalidate',
                 options: {
                   cacheName: 'kmb-api-cache',
-                  networkTimeoutSeconds: 10,
                   expiration: {
                     maxEntries: 200,
-                    maxAgeSeconds: 60 * 5, // 5 minutes
+                    maxAgeSeconds: 60 * 60 * 24, // 24 hours
                     purgeOnQuotaError: true,
                   },
-
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
                 },
               },
               {
@@ -72,14 +73,16 @@ export default defineConfig(({ mode }) => {
               },
               {
                 urlPattern: /^https:\/\/ai-proxy\.chatwise\.app\/.*/i,
-                handler: 'NetworkFirst',
+                handler: 'StaleWhileRevalidate',
                 options: {
                   cacheName: 'ai-proxy-cache',
-                  networkTimeoutSeconds: 30,
                   expiration: {
                     maxEntries: 50,
-                    maxAgeSeconds: 60 * 10, // 10 minutes
+                    maxAgeSeconds: 60 * 60 * 24, // 24 hours
                     purgeOnQuotaError: true,
+                  },
+                  cacheableResponse: {
+                    statuses: [0, 200],
                   },
                 },
               },
@@ -111,6 +114,12 @@ export default defineConfig(({ mode }) => {
                 sizes: '512x512',
                 type: 'image/png',
                 purpose: 'any maskable'
+              },
+              {
+                src: 'icon.png',
+                sizes: '180x180',
+                type: 'image/png',
+                purpose: 'apple touch icon'
               }
             ],
             shortcuts: [

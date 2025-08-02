@@ -18,6 +18,7 @@ const TripPlannerPanel = React.lazy(() => import('./components/TripPlannerPanel'
 const SettingsPanel = React.lazy(() => import('./components/SettingsPanel'));
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import SafariInstallPrompt from './components/SafariInstallPrompt';
 import { usePWA } from './hooks/usePWA';
 
 type ActiveTab = 'planner' | 'kmb' | 'mtr' | 'settings';
@@ -55,6 +56,8 @@ function App() {
     installApp,
     offlineReady,
     dismissOfflineReady,
+    showSafariInstallPrompt,
+    dismissSafariInstallPrompt,
   } = usePWA();
 
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -250,8 +253,11 @@ function App() {
     if (!searchTerm) {
       return allRoutes;
     }
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
     return allRoutes.filter(route =>
-      route.route.toLowerCase().startsWith(searchTerm.toLowerCase())
+      route.route.toLowerCase().startsWith(lowerCaseSearchTerm) ||
+      route.dest_tc.toLowerCase().includes(lowerCaseSearchTerm) ||
+      route.dest_en.toLowerCase().includes(lowerCaseSearchTerm)
     );
   }, [searchTerm, allRoutes]);
 
@@ -385,10 +391,14 @@ function App() {
            onInstall={handleInstallApp}
            onDismiss={handleDismissInstall}
          />
+         <SafariInstallPrompt
+           show={showSafariInstallPrompt}
+           onDismiss={dismissSafariInstallPrompt}
+         />
 
-         {/* Offline Ready Notification */}
-         {offlineReady && (
-           <div className="fixed bottom-4 left-4 right-4 z-40 animate-fade-in">
+        {/* Offline Ready Notification */}
+        {offlineReady && (
+          <div className="fixed bottom-4 left-4 right-4 z-40 animate-fade-in">
              <div className="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3">
                <div className="flex items-center justify-between">
                  <div className="flex items-center space-x-2">

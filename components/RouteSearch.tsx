@@ -42,7 +42,7 @@ const RouteSearch: React.FC<RouteSearchProps> = ({ searchTerm, setSearchTerm, ro
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search KMB route (e.g. 1A, 968)"
+            placeholder="Search route or destination (e.g., 1A, 尖沙咀, Tsim Sha Tsui)"
             className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl py-3 px-5 pl-12 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-shadow"
           />
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

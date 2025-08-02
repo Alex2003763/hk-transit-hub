@@ -148,6 +148,8 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, et
 
   const handleMarkerClick = (stopId: string) => {
     setActiveStop(stopId);
+    // Also fetch ETA when a map marker is clicked
+    onFetchEta(stopId, route.route, route.service_type);
   }
 
   return (
