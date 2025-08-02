@@ -5,7 +5,6 @@ type ActiveTab = 'planner' | 'kmb' | 'mtr' | 'settings';
 interface BottomNavProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-  disabled: boolean;
 }
 
 const PlannerIcon = () => (
@@ -40,20 +39,14 @@ const NavButton: React.FC<{
     icon: React.ReactNode;
     isActive: boolean;
     onClick: () => void;
-    isDisabled: boolean;
-}> = ({ label, icon, isActive, onClick, isDisabled }) => (
+}> = ({ label, icon, isActive, onClick }) => (
     <button
         onClick={onClick}
-        disabled={isDisabled}
         className={`flex flex-col items-center justify-center w-full pt-3 pb-2 transition-colors duration-200 relative ${
             isActive
                 ? 'text-[color:var(--accent)]'
                 : 'text-gray-500 dark:text-gray-400'
-        } ${
-            isDisabled && !isActive
-                ? 'cursor-not-allowed opacity-40'
-                : 'hover:text-[color:var(--accent-hover)] dark:hover:text-[color:var(--accent)]'
-        }`}
+        } hover:text-[color:var(--accent-hover)] dark:hover:text-[color:var(--accent)]`}
         aria-label={label}
         aria-current={isActive ? 'page' : undefined}
     >
@@ -63,7 +56,7 @@ const NavButton: React.FC<{
 );
 
 
-const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, disabled }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
     
     const tabs: {id: ActiveTab, label: string, icon: React.ReactNode}[] = [
         { id: 'planner', label: 'Planner', icon: <PlannerIcon /> },
@@ -82,7 +75,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, disabled
                         icon={tab.icon}
                         isActive={activeTab === tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        isDisabled={disabled && activeTab !== tab.id}
                     />
                 ))}
             </div>

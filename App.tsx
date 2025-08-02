@@ -369,11 +369,10 @@ function App() {
         <main className="px-4 max-w-4xl w-full mx-auto flex-grow pb-24 flex flex-col">
           {renderContent()}
         </main>
-         <BottomNav
+         {!showBack && <BottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          disabled={showBack}
-         />
+         />}
 
          {/* PWA Components */}
          <PWAUpdatePrompt
