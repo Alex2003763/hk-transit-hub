@@ -1,0 +1,335 @@
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Route, StopInfo, RouteStop, Eta } from './types';
+import { getRouteList, getAllStops, getRouteStops, getStopEta } from './services/kmbApi';
+import { mtrStations, mtrLines, MtrStation } from './data/mtrStations';
+import Header from './components/Header';
+import BottomNav from './components/BottomNav';
+import RouteSearch from './components/RouteSearch';
+import RouteDetails from './components/RouteDetails';
+import MtrPanel from './components/MtrPanel';
+import TripPlannerPanel from './components/TripPlannerPanel';
+import SettingsPanel from './components/SettingsPanel';
+import Loader from './components/Loader';
+import ErrorDisplay from './components/ErrorDisplay';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { usePWA } from './hooks/usePWA';
+
+type ActiveTab = 'planner' | 'kmb' | 'mtr' | 'settings';
+type Theme = 'light' | 'dark';
+export type Location = { name_tc: string; name_en: string; };
+
+
+function App() {
+  // KMB State
+  const [rawRoutes, setRawRoutes] = useState<Route[]>([]); // For AI
+  const [allRoutes, setAllRoutes] = useState<Route[]>([]); // For KMB tab display
+  const [allStops, setAllStops] = useState<Map<string, StopInfo>>(new Map());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [routeStops, setRouteStops] = useState<{ outbound: RouteStop[]; inbound: RouteStop[] }>({ outbound: [], inbound: [] });
+  const [etas, setEtas] = useState<Record<string, Eta[]>>({});
+  
+  // App-wide state
+  const [activeTab, setActiveTab] = useState<ActiveTab>('planner');
+  const [loading, setLoading] = useState({
+    initial: true,
+    details: false,
+    eta: '' // stopId of the ETA being loaded
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [theme, setTheme] = useState<Theme>('light');
+
+  // PWA functionality
+  const {
+    showUpdatePrompt,
+    updateApp,
+    dismissUpdate,
+    isInstallable,
+    installApp,
+    offlineReady,
+    dismissOfflineReady,
+  } = usePWA();
+
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  // Theme Management
+  useEffect(() => {
+    const storedTheme = localStorage.getItem('theme') as Theme | null;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
+    setTheme(initialTheme);
+  }, []);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const themeMeta = document.getElementById('theme-color-meta');
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+       if (themeMeta) themeMeta.setAttribute('content', '#111827'); // gray-900
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      if (themeMeta) themeMeta.setAttribute('content', '#f9fafb'); // gray-50
+    }
+  }, [theme]);
+
+  // PWA Install Prompt Management
+  useEffect(() => {
+    if (isInstallable) {
+      // Show install prompt after a delay if user hasn't dismissed it
+      const hasShownInstallPrompt = localStorage.getItem('pwa-install-prompt-shown');
+      if (!hasShownInstallPrompt) {
+        const timer = setTimeout(() => {
+          setShowInstallPrompt(true);
+        }, 10000); // Show after 10 seconds
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isInstallable]);
+
+  const handleInstallApp = async () => {
+    const success = await installApp();
+    if (success) {
+      setShowInstallPrompt(false);
+      localStorage.setItem('pwa-install-prompt-shown', 'true');
+    }
+  };
+
+  const handleDismissInstall = () => {
+    setShowInstallPrompt(false);
+    localStorage.setItem('pwa-install-prompt-shown', 'true');
+  };
+
+
+  useEffect(() => {
+    // Load API key from local storage on initial load
+    const storedApiKey = localStorage.getItem('gemini_api_key');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+    }
+
+    const fetchInitialData = async () => {
+      try {
+        setError(null);
+        setLoading(prev => ({ ...prev, initial: true }));
+        const [routesRes, stopsRes] = await Promise.all([getRouteList(), getAllStops()]);
+        
+        setRawRoutes(routesRes); // Keep all routes for AI context
+        
+        const uniqueRoutes = new Map<string, Route>();
+        routesRes.forEach(route => {
+            // Prioritize outbound routes for display to avoid duplicates like 1A, 1A
+            if (!uniqueRoutes.has(route.route) || route.bound === 'O') {
+                uniqueRoutes.set(route.route, route);
+            }
+        });
+        setAllRoutes(Array.from(uniqueRoutes.values()).sort((a, b) => a.route.localeCompare(b.route, undefined, {numeric: true})));
+
+        const stopsMap = new Map<string, StopInfo>();
+        stopsRes.forEach(stop => stopsMap.set(stop.stop, stop));
+        setAllStops(stopsMap);
+
+      } catch (e) {
+        setError('Failed to load initial bus data. Please check your connection and try again later.');
+        console.error(e);
+      } finally {
+        setLoading(prev => ({ ...prev, initial: false }));
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+  
+  const handleBack = () => {
+    setSelectedRoute(null);
+    setRouteStops({ outbound: [], inbound: [] });
+    setEtas({});
+  };
+
+  const handleSelectRoute = useCallback(async (route: Route | null) => {
+    setSelectedRoute(route);
+    setRouteStops({ outbound: [], inbound: [] }); // Reset previous stops
+    setEtas({}); // Reset ETAs
+    if (route) {
+      try {
+        setError(null);
+        setLoading(prev => ({ ...prev, details: true }));
+        const [outboundRes, inboundRes] = await Promise.all([
+          getRouteStops(route.route, 'outbound', route.service_type),
+          getRouteStops(route.route, 'inbound', route.service_type)
+        ]);
+        setRouteStops({ outbound: outboundRes, inbound: inboundRes });
+      } catch (e) {
+        setError(`Failed to load details for route ${route.route}.`);
+        console.error(e);
+      } finally {
+        setLoading(prev => ({ ...prev, details: false }));
+      }
+    }
+  }, []);
+
+  const handleFetchEta = useCallback(async (stopId: string, route: string, serviceType: string) => {
+    if (loading.eta === stopId) return;
+
+    try {
+      setLoading(prev => ({ ...prev, eta: stopId }));
+      const etaData = await getStopEta(stopId, route, serviceType);
+      setEtas(prev => ({ ...prev, [stopId]: etaData }));
+    } catch (e) {
+      console.error(`Failed to fetch ETA for stop ${stopId}:`, e);
+      setEtas(prev => ({ ...prev, [stopId]: [] }));
+    } finally {
+      setLoading(prev => ({ ...prev, eta: '' }));
+    }
+  }, [loading.eta]);
+
+  const handleSaveApiKey = (key: string) => {
+    const trimmedKey = key.trim();
+    setApiKey(trimmedKey);
+    if (trimmedKey) {
+        localStorage.setItem('gemini_api_key', trimmedKey);
+    } else {
+        localStorage.removeItem('gemini_api_key');
+    }
+  };
+
+  const filteredRoutes = useMemo(() => {
+    if (!searchTerm) {
+      return allRoutes;
+    }
+    return allRoutes.filter(route =>
+      route.route.toLowerCase().startsWith(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, allRoutes]);
+
+  const locations = useMemo((): Location[] => {
+    const locationMap = new Map<string, Location>();
+
+    // Add all bus stops
+    for (const stop of allStops.values()) {
+        if (stop.name_tc && !locationMap.has(stop.name_tc)) {
+            locationMap.set(stop.name_tc, { name_tc: stop.name_tc, name_en: stop.name_en });
+        }
+    }
+
+    // Add all MTR stations
+    for (const line of Object.values(mtrStations)) {
+        for (const station of line) {
+             if (station.name_tc && !locationMap.has(station.name_tc)) {
+                locationMap.set(station.name_tc, { name_tc: station.name_tc, name_en: station.name_en });
+            }
+        }
+    }
+    
+    // Convert map to array and sort
+    return Array.from(locationMap.values()).sort((a, b) => a.name_tc.localeCompare(b.name_tc, 'zh-HK'));
+  }, [allStops]);
+
+  const renderKmbContent = () => {
+     if (loading.initial) return <Loader message="Loading bus data..." />;
+     if (error && !loading.initial) return <ErrorDisplay message={error} />;
+     
+     if (!selectedRoute) {
+        return (
+          <RouteSearch
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            routes={filteredRoutes}
+            onSelectRoute={handleSelectRoute}
+          />
+        )
+     }
+     return (
+        <RouteDetails
+            route={selectedRoute}
+            stops={routeStops}
+            stopInfos={allStops}
+            etas={etas}
+            onFetchEta={handleFetchEta}
+            loadingDetails={loading.details}
+            loadingEtaStopId={loading.eta}
+            theme={theme}
+        />
+     )
+  }
+  
+  const renderContent = () => {
+    switch(activeTab) {
+      case 'planner':
+        return <TripPlannerPanel allRoutes={rawRoutes} locations={locations} apiKey={apiKey} />;
+      case 'kmb':
+        return renderKmbContent();
+      case 'mtr':
+        return <MtrPanel />;
+      case 'settings':
+        return <SettingsPanel currentApiKey={apiKey} onSaveApiKey={handleSaveApiKey} theme={theme} setTheme={setTheme} />;
+      default:
+        return null;
+    }
+  }
+
+  const showBack = activeTab === 'kmb' && !!selectedRoute;
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans flex flex-col">
+      <Header 
+        onBack={handleBack} 
+        showBack={showBack}
+      />
+      <main className="px-4 max-w-4xl w-full mx-auto flex-grow pb-24 flex flex-col">
+        {renderContent()}
+      </main>
+       <BottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        disabled={showBack}
+       />
+
+       {/* PWA Components */}
+       <PWAUpdatePrompt
+         show={showUpdatePrompt}
+         onUpdate={updateApp}
+         onDismiss={dismissUpdate}
+       />
+       <PWAInstallPrompt
+         show={showInstallPrompt && isInstallable}
+         onInstall={handleInstallApp}
+         onDismiss={handleDismissInstall}
+       />
+
+       {/* Offline Ready Notification */}
+       {offlineReady && (
+         <div className="fixed bottom-4 left-4 right-4 z-40 animate-fade-in">
+           <div className="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3">
+             <div className="flex items-center justify-between">
+               <div className="flex items-center space-x-2">
+                 <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                   </svg>
+                 </div>
+                 <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                   App ready to work offline
+                 </span>
+               </div>
+               <button
+                 onClick={dismissOfflineReady}
+                 className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+               >
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
+    </div>
+  );
+}
+
+export default App;

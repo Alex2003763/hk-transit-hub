@@ -1,0 +1,6 @@
+{
+  "name": "HK Transit Hub",
+  "description": "An intelligent journey planner for Hong Kong's KMB and MTR networks. Get real-time ETAs, view routes on a map, and use the AI Trip Planner for smart, multi-modal travel suggestions.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

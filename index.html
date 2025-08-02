@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iMjIiIGZpbGw9IiMxMTIyNDQiLz4KPHBhdGggZD0iTTI1IDM1SDY4QzcxLjMxMzcgMzUgNzQgMzcuNjODYzIDc0IDQxVjQxQzY4LjUgNDEgNjUgNDUuNSA2NSA1MEM2NSA1NC41IDY4LjUgNTkgNzQgNTlWNTlDNzQgNjIuMzEzNyA3MS4zMTM3IDY1IDY4IDY1SDI1IiBzdHJva2U9IiMwMEZGRDQiIHN0cm9rZS13aWR0aD0iOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO -->
+    <title>HK Transit Hub - Smart Journey Planner</title>
+    <meta name="description" content="An intelligent journey planner for Hong Kong's KMB and MTR networks. Get real-time ETAs, view routes on a map, and use the AI Trip Planner for smart, multi-modal travel suggestions." />
+    <meta name="keywords" content="Hong Kong, transport, bus, MTR, KMB, trip planner, journey planner, public transport, ETA" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="HK Transit Hub - Smart Journey Planner">
+    <meta property="og:description" content="Intelligent journey planner for Hong Kong's KMB and MTR networks with real-time ETAs and an AI trip planner.">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="HK Transit Hub - Smart Journey Planner">
+    <meta property="twitter:description" content="Intelligent journey planner for Hong Kong's KMB and MTR networks with real-time ETAs and an AI trip planner.">
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" id="theme-color-meta" content="#f9fafb">
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="HK Transit Hub">
+    <meta name="application-name" content="HK Transit Hub">
+    <meta name="msapplication-TileColor" content="#00f5d4">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="/icon.png">
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script>
+      // Set theme on initial load to prevent FOUC
+      (function() {
+        const theme = localStorage.getItem('theme');
+        const themeMeta = document.getElementById('theme-color-meta');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+          if (themeMeta) themeMeta.setAttribute('content', '#111827');
+        } else {
+          document.documentElement.classList.remove('dark');
+          if (themeMeta) themeMeta.setAttribute('content', '#f9fafb');
+        }
+      })();
+    </script>
+    <style>
+      :root {
+        --background-light: #f9fafb; /* gray-50 */
+        --text-light: #1f2937; /* gray-800 */
+        --text-secondary-light: #6b7280; /* gray-500 */
+        --card-light: #ffffff;
+        --border-light: #e5e7eb; /* gray-200 */
+        
+        --background-dark: #111827; /* gray-900 */
+        --text-dark: #f3f4f6; /* gray-100 */
+        --text-secondary-dark: #9ca3af; /* gray-400 */
+        --card-dark: #1f2937; /* gray-800 */
+        --border-dark: #374151; /* gray-700 */
+
+        --accent: #00f5d4;
+        --accent-hover: #00d8b9;
+        --accent-text: #112244;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--background-light);
+        color: var(--text-light);
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .dark body {
+        background-color: var(--background-dark);
+        color: var(--text-dark);
+      }
+      /* Simple scrollbar styling */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      .dark ::-webkit-scrollbar-track { background: var(--background-dark); }
+      .dark ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+      .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+      html:not(.dark) ::-webkit-scrollbar-track { background: #f3f4f6; }
+      html:not(.dark) ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+      html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+      
+      /* Leaflet theme override */
+      .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+        background: var(--card-light);
+        color: var(--text-light);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+      }
+      .dark .leaflet-popup-content-wrapper, .dark .leaflet-popup-tip {
+        background: var(--card-dark);
+        color: var(--text-dark);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        border: 1px solid var(--border-dark);
+      }
+      .leaflet-popup-content-wrapper {
+        padding: 4px;
+      }
+       .leaflet-popup-content {
+        margin: 10px 16px;
+       }
+      .leaflet-popup-content b { color: inherit; font-weight: 700; }
+      .leaflet-container a.leaflet-popup-close-button { color: #9ca3af; }
+      .dark .leaflet-container a.leaflet-popup-close-button { color: #d1d5db; }
+      .leaflet-container a.leaflet-popup-close-button:hover { color: #111827; }
+      .dark .leaflet-container a.leaflet-popup-close-button:hover { color: #fff; }
+      
+      .leaflet-control-attribution { background: rgba(255,255,255,0.8) !important; color: #4b5563 !important; }
+      .dark .leaflet-control-attribution { background: rgba(0,0,0,0.7) !important; color: #9ca3af !important; }
+      .leaflet-control-attribution a { color: #00f5d4 !important; text-decoration: none; }
+      
+      /* Animation */
+      .animate-fade-in {
+        animation: fadeIn 0.4s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^18.2.0/",
+    "react/": "https://esm.sh/react@^18.2.0/",
+    "react": "https://esm.sh/react@^18.2.0",
+    "leaflet": "https://esm.sh/leaflet@^1.9.4",
+    "react-leaflet": "https://esm.sh/react-leaflet@^4.2.1",
+    "@google/genai": "https://esm.sh/@google/genai"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
