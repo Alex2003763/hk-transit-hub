@@ -35,14 +35,19 @@ const TripPlannerPanel: React.FC<TripPlannerPanelProps> = ({ allRoutes, location
         setError(null);
 
         const handleSuccess = (position: GeolocationPosition) => {
-            const { latitude, longitude } = position.coords;
+            const { latitude, longitude, accuracy } = position.coords;
             setUserLocation({ lat: latitude, lng: longitude });
 
             // Use reverse geocoding to get a readable location name
-            // For now, we'll use a simple format
-            const locationName = `Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+            // Show full precision coordinates for better accuracy
+            const locationName = `Current Location (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`;
             setOrigin(locationName);
             setIsGettingLocation(false);
+
+            // Log accuracy for debugging
+            if (accuracy) {
+                console.log(`Location obtained with accuracy: ${accuracy} meters`);
+            }
         };
 
         const handleError = (error: GeolocationPositionError, isRetry = false) => {
@@ -95,14 +100,14 @@ const TripPlannerPanel: React.FC<TripPlannerPanelProps> = ({ allRoutes, location
             setIsGettingLocation(false);
         };
 
-        // Use working settings (enableHighAccuracy: false)
+        // Try high accuracy first, fallback to lower accuracy if needed
         navigator.geolocation.getCurrentPosition(
             handleSuccess,
-            handleError,
+            (error) => handleError(error, false),
             {
-                enableHighAccuracy: false, // This is the key fix!
+                enableHighAccuracy: true,
                 timeout: 10000,
-                maximumAge: 300000 // 5 minutes
+                maximumAge: 30000
             }
         );
     }, []);
@@ -215,7 +220,7 @@ Now, based on this data and live information from Google Search, generate a mult
             // Prepare the content with location context if available
             let contentText = `Generate a trip plan in Hong Kong from "${origin}" to "${destination}".`;
             if (userLocation && origin.includes('Current Location')) {
-                contentText += ` The starting location coordinates are: ${userLocation.lat}, ${userLocation.lng}.`;
+                contentText += ` The starting location coordinates are: Latitude ${userLocation.lat}, Longitude ${userLocation.lng}.`;
             }
 
             // Use direct fetch to the proxy with Google Search tools
@@ -242,7 +247,10 @@ Now, based on this data and live information from Google Search, generate a mult
                     - "[location_name] Hong Kong public transport access"
                     - "Hong Kong transport disruptions today"
 
-                    Always provide the most current and accurate information available.\n\nFINAL REMINDER: Your entire output must be a single JSON object within a \`\`\`json markdown block. Do not add any other text before or after the markdown block.`
+                    Always provide the most current and accurate information available.
+
+CRITICAL OUTPUT FORMAT REQUIREMENT:
+Your response must be ONLY a valid JSON object. Do not include any markdown formatting, code blocks, explanations, or any other text. Start your response directly with { and end with }. The JSON must be parseable and follow the exact schema specified above.`
                     }]
                 },
                 tools: [{
@@ -279,23 +287,25 @@ Now, based on this data and live information from Google Search, generate a mult
             }
 
             const textResponse = responseData.candidates[0].content.parts[0].text;
-            let parsedPlan;
+            let parsedPlan: any;
 
-            const jsonMatch = textResponse.match(/```json\n([\s\S]*?)\n```/);
-            
-            if (jsonMatch && jsonMatch[1]) {
-                try {
-                    parsedPlan = JSON.parse(jsonMatch[1]);
-                } catch (e) {
-                    console.error("Failed to parse JSON from markdown block", e);
-                    throw new Error("The AI returned a malformed plan. Could not understand the format.");
-                }
-            } else {
-                // If no markdown block, try to parse the whole response as JSON as a fallback
-                try {
-                    parsedPlan = JSON.parse(textResponse);
-                } catch (e) {
-                    console.error("Failed to parse the entire response as JSON", e);
+            // First try to parse as pure JSON (new format)
+            try {
+                parsedPlan = JSON.parse(textResponse.trim());
+            } catch (e) {
+                // Fallback: try to extract JSON from markdown block (old format)
+                const jsonMatch = textResponse.match(/```json\n([\s\S]*?)\n```/);
+
+                if (jsonMatch && jsonMatch[1]) {
+                    try {
+                        parsedPlan = JSON.parse(jsonMatch[1]);
+                    } catch (e2) {
+                        console.error("Failed to parse JSON from markdown block", e2);
+                        throw new Error("The AI returned a malformed plan. Could not understand the format.");
+                    }
+                } else {
+                    console.error("Failed to parse response as JSON", e);
+                    console.log("Raw response:", textResponse);
                     throw new Error("The AI returned a response that was not in the expected JSON format.");
                 }
             }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { TripPlan, TripStep, WalkDetails, BusDetails, MtrDetails } from '../types';
+import React, { useState } from 'react';
+import { TripPlan, TripStep, WalkDetails, BusDetails, MtrDetails, TripResult } from '../types';
 import ErrorDisplay from './ErrorDisplay';
 
 const WalkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>;
@@ -47,7 +47,7 @@ const DetailItem: React.FC<{ label: string; value: string | number | undefined }
 };
 
 interface TripPlanResultProps {
-    plan: TripPlan;
+    plan: TripResult;
 }
 
 const TripSummary: React.FC<{ time: number; cost: number }> = ({ time, cost }) => (
@@ -64,7 +64,7 @@ const TripSummary: React.FC<{ time: number; cost: number }> = ({ time, cost }) =
     </div>
 );
 
-const TripPlanResult: React.FC<TripPlanResultProps> = ({ plan }) => {
+const PlanDetails: React.FC<{ plan: TripPlan }> = ({ plan }) => {
     if (!plan || !plan.plan || plan.plan.length === 0) {
         return <ErrorDisplay message="The generated plan is empty or invalid." />;
     }
@@ -111,12 +111,9 @@ const TripPlanResult: React.FC<TripPlanResultProps> = ({ plan }) => {
     };
 
     return (
-        <div className="pt-4 animate-fade-in">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Your Trip Plan:</h3>
-
+        <div className="pt-4">
             <TripSummary time={plan.total_time_minutes} cost={plan.total_cost_hkd} />
 
-            {/* Current Conditions Alert */}
             {plan.current_conditions && (
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <div className="flex items-start">
@@ -147,6 +144,47 @@ const TripPlanResult: React.FC<TripPlanResultProps> = ({ plan }) => {
                         </StepCard>
                     );
                 })}
+            </div>
+        </div>
+    );
+};
+
+const TripPlanResult: React.FC<TripPlanResultProps> = ({ plan }) => {
+    const [activeTab, setActiveTab] = useState<'cheapest' | 'fastest'>('fastest');
+
+    if (!plan || !plan.cheapest_plan || !plan.fastest_plan) {
+        return <ErrorDisplay message="The generated plan is incomplete or invalid." />;
+    }
+
+    const tabs = [
+        { id: 'fastest', label: 'Fastest' },
+        { id: 'cheapest', label: 'Cheapest' },
+    ];
+
+    return (
+        <div className="pt-4 animate-fade-in">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Your Trip Plan:</h3>
+            <div className="mb-4">
+                <div className="flex border-b border-gray-200 dark:border-gray-700">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as 'cheapest' | 'fastest')}
+                            className={`py-2 px-4 text-sm font-medium transition-colors duration-200 ${
+                                activeTab === tab.id
+                                    ? 'border-b-2 border-[color:var(--accent)] text-[color:var(--accent)]'
+                                    : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div>
+                {activeTab === 'fastest' && <PlanDetails plan={plan.fastest_plan} />}
+                {activeTab === 'cheapest' && <PlanDetails plan={plan.cheapest_plan} />}
             </div>
         </div>
     );
