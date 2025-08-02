@@ -21,7 +21,7 @@
     <meta property="twitter:description" content="Intelligent journey planner for Hong Kong's KMB and MTR networks with real-time ETAs and an AI trip planner.">
     
     <!-- Theme Color -->
-    <meta name="theme-color" id="theme-color-meta" content="#f9fafb">
+    <meta name="theme-color" id="theme-color-meta" content="#111827">
 
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -42,20 +42,39 @@
     <link rel="manifest" href="/manifest.webmanifest">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script>
-      // Set theme on initial load to prevent FOUC
+      // Set theme on initial load to prevent FOUC (Flash of Unstyled Content)
       (function() {
-        const theme = localStorage.getItem('theme');
-        const themeMeta = document.getElementById('theme-color-meta');
-        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
-          if (themeMeta) themeMeta.setAttribute('content', '#111827');
-        } else {
+        try {
+          const storedTheme = localStorage.getItem('theme');
+          const themeMeta = document.getElementById('theme-color-meta');
+
+          // Determine initial theme: stored preference > dark (default fallback)
+          const shouldUseDark = storedTheme === 'dark' || !storedTheme;
+
+          if (shouldUseDark) {
+            document.documentElement.classList.add('dark');
+            if (themeMeta) themeMeta.setAttribute('content', '#111827'); // gray-900
+            console.log('Initial theme: dark (stored:', storedTheme, ')');
+          } else {
+            document.documentElement.classList.remove('dark');
+            if (themeMeta) themeMeta.setAttribute('content', '#f9fafb'); // gray-50
+            console.log('Initial theme: light (stored:', storedTheme, ')');
+          }
+        } catch (error) {
+          console.error('Error setting initial theme:', error);
+          // Fallback to light theme
           document.documentElement.classList.remove('dark');
+          const themeMeta = document.getElementById('theme-color-meta');
           if (themeMeta) themeMeta.setAttribute('content', '#f9fafb');
         }
       })();

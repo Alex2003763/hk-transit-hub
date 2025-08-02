@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => {
             short_name: 'HK Transit',
             description: 'Smart journey planner for Hong Kong\'s KMB and MTR networks',
             theme_color: '#00f5d4',
-            background_color: '#f9fafb',
+            background_color: '#111827',
             display: 'standalone',
             orientation: 'portrait',
             scope: '/',

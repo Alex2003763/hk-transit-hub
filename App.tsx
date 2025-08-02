@@ -40,7 +40,7 @@ function App() {
   });
   const [error, setError] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string>('');
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>('dark');
 
   // PWA functionality
   const {
@@ -58,22 +58,56 @@ function App() {
   // Theme Management
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme') as Theme | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
+    // Default to dark theme if no stored preference
+    const initialTheme = storedTheme || 'dark';
+
+    console.log('🔍 Theme initialization:', {
+      storedTheme,
+      initialTheme,
+      currentTheme: theme
+    });
+
     setTheme(initialTheme);
+
+    // No need to listen for system theme changes since we default to dark
   }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
     const themeMeta = document.getElementById('theme-color-meta');
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-       if (themeMeta) themeMeta.setAttribute('content', '#111827'); // gray-900
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      if (themeMeta) themeMeta.setAttribute('content', '#f9fafb'); // gray-50
+
+
+    try {
+      if (theme === 'dark') {
+        root.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        if (themeMeta) themeMeta.setAttribute('content', '#111827'); // gray-900
+
+
+        // Update PWA manifest theme color if available
+        const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+        if (manifestLink) {
+          // Note: Manifest theme color updates require a new manifest file
+          // This is handled by the service worker and PWA configuration
+        }
+      } else {
+        root.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        if (themeMeta) themeMeta.setAttribute('content', '#f9fafb'); // gray-50
+
+      }
+
+      // Dispatch custom event for other components that might need to know about theme changes
+      window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
+
+    } catch (error) {
+      console.error('Error applying theme:', error);
+      // Fallback to light theme if there's an error
+      if (theme === 'dark') {
+        root.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        setTheme('light');
+      }
     }
   }, [theme]);
 
