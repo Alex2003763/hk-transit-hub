@@ -111,10 +111,20 @@ export interface TripStep {
   type: 'walk' | 'bus' | 'mtr';
   details: StepDetails;
   summary: string;
+  duration_minutes: number;
+  cost_hkd: number;
 }
 
 export interface TripPlan {
+  current_conditions?: string;
+  total_time_minutes: number;
+  total_cost_hkd: number;
   plan: TripStep[];
+}
+
+export interface TripResult {
+  cheapest_plan: TripPlan;
+  fastest_plan: TripPlan;
 }
 
 export interface GroundingChunk {

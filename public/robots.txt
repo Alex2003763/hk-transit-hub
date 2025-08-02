@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://hktransit.usefultools.qzz.io/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1
+
+# Allow all search engines to access the app
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+# Block access to API endpoints that might be rate-limited
+Disallow: /api/
+
+# Allow access to manifest and service worker
+Allow: /manifest.webmanifest
+Allow: /sw.js
+Allow: /workbox-*.js

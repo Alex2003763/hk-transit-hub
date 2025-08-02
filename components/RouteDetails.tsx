@@ -1,8 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { Route, RouteStop, StopInfo, Eta } from '../types';
 import Loader from './Loader';
 import StopEtaDisplay from './StopEtaDisplay';
-import MapView from './MapView';
+import MapSkeleton from './MapSkeleton';
+import ErrorBoundary from './ErrorBoundary';
+
+// Lazy load the heavy MapView component
+const MapView = React.lazy(() => import('./MapView'));
 
 type Direction = 'outbound' | 'inbound';
 type Theme = 'light' | 'dark';
@@ -91,10 +95,10 @@ const StopList: React.FC<StopListProps> = ({ stops, stopInfos, route, etas, onFe
 
   return (
     <ul className="px-2">
-      {stops.map((stop) => (
-        <StopListItem 
+      {stops.map((stop, index) => (
+        <StopListItem
           ref={el => { stopRefs.current[stop.stop] = el; }}
-          key={stop.stop}
+          key={`${stop.stop}-${index}-${stop.seq || ''}`}
           stop={stop}
           stopInfo={stopInfos.get(stop.stop)}
           etas={etas[stop.stop] || []}
@@ -191,13 +195,19 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, et
       ) : (
         <div className="flex flex-col flex-grow min-h-0 border border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden animate-fade-in">
             <div className="h-[250px] md:h-[300px] flex-shrink-0">
-                 <MapView 
-                    stops={currentStops} 
-                    stopInfos={stopInfos} 
-                    theme={theme}
-                    activeStopId={activeStop}
-                    onMarkerClick={handleMarkerClick}
-                />
+                <ErrorBoundary fallback={<MapSkeleton className="h-full w-full" />}>
+                  <Suspense fallback={<MapSkeleton className="h-full w-full" />}>
+                    <MapView
+                        stops={currentStops}
+                        stopInfos={stopInfos}
+                        theme={theme}
+                        activeStopId={activeStop}
+                        onMarkerClick={handleMarkerClick}
+                        showClustering={false}
+                        maxClusterRadius={60}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
             </div>
             <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-gray-900 pt-2">
                 <StopList

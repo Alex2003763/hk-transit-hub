@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { GoogleGenAI } from "@google/genai";
-import { Route, TripPlan } from '../types';
+import { Route, TripResult } from '../types';
 import { Location } from '../App';
 import { mtrLines, mtrStations } from '../data/mtrStations';
 import Loader from './Loader';
@@ -17,11 +16,96 @@ interface TripPlannerPanelProps {
 const TripPlannerPanel: React.FC<TripPlannerPanelProps> = ({ allRoutes, locations, apiKey }) => {
     const [origin, setOrigin] = useState('');
     const [destination, setDestination] = useState('');
-    const [plan, setPlan] = useState<TripPlan | null>(null);
+    const [plan, setPlan] = useState<TripResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isGettingLocation, setIsGettingLocation] = useState(false);
+    const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
 
     const isButtonDisabled = !origin.trim() || !destination.trim() || loading || !apiKey;
+
+    // Function to get user's current location with fallback
+    const getUserLocation = useCallback(() => {
+        if (!navigator.geolocation) {
+            setError('Geolocation is not supported by this browser.');
+            return;
+        }
+
+        setIsGettingLocation(true);
+        setError(null);
+
+        const handleSuccess = (position: GeolocationPosition) => {
+            const { latitude, longitude } = position.coords;
+            setUserLocation({ lat: latitude, lng: longitude });
+
+            // Use reverse geocoding to get a readable location name
+            // For now, we'll use a simple format
+            const locationName = `Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+            setOrigin(locationName);
+            setIsGettingLocation(false);
+        };
+
+        const handleError = (error: GeolocationPositionError, isRetry = false) => {
+            console.error('Error getting location:', error);
+
+            // If first attempt failed and it's not a permission error, try with different settings
+            if (!isRetry && error.code !== 1) {
+                console.log('Retrying with fallback settings...');
+                navigator.geolocation.getCurrentPosition(
+                    handleSuccess,
+                    (retryError) => {
+                        console.error('Retry also failed:', retryError);
+                        // Only show error if retry also fails
+                        let errorMessage = 'Unable to get your location. ';
+                        if (retryError.code === 1) {
+                            errorMessage += 'Please allow location access in your browser settings and try again.';
+                        } else if (retryError.code === 2) {
+                            errorMessage += 'Location information is unavailable. Please check your device settings.';
+                        } else if (retryError.code === 3) {
+                            errorMessage += 'Location request timed out. Please try again or check your connection.';
+                        } else {
+                            errorMessage += 'An unknown error occurred. Please try again.';
+                        }
+                        setError(errorMessage);
+                        setIsGettingLocation(false);
+                    },
+                    {
+                        enableHighAccuracy: false,
+                        timeout: 15000,
+                        maximumAge: 60000
+                    }
+                );
+                return;
+            }
+
+            // Only show error for permission denied or if this is already a retry
+            if (error.code === 1 || isRetry) {
+                let errorMessage = 'Unable to get your location. ';
+                if (error.code === 1) {
+                    errorMessage += 'Please allow location access in your browser settings and try again.';
+                } else if (error.code === 2) {
+                    errorMessage += 'Location information is unavailable. Please check your device settings.';
+                } else if (error.code === 3) {
+                    errorMessage += 'Location request timed out. Please try again or check your connection.';
+                } else {
+                    errorMessage += 'An unknown error occurred. Please try again.';
+                }
+                setError(errorMessage);
+            }
+            setIsGettingLocation(false);
+        };
+
+        // Use working settings (enableHighAccuracy: false)
+        navigator.geolocation.getCurrentPosition(
+            handleSuccess,
+            handleError,
+            {
+                enableHighAccuracy: false, // This is the key fix!
+                timeout: 10000,
+                maximumAge: 300000 // 5 minutes
+            }
+        );
+    }, []);
 
     const stripParentheses = (text: string | undefined | null): string => {
         if (!text) return '';
@@ -42,34 +126,58 @@ const TripPlannerPanel: React.FC<TripPlannerPanelProps> = ({ allRoutes, location
         const validLocationsData = locations.map(l => stripParentheses(l.name_tc)).join('\n');
 
         return `
-You are an expert Hong Kong transportation planner. Your goal is to create the most efficient, logical, and accurate multi-modal trip plan. You must strictly adhere to the following rules.
+You are an expert Hong Kong transportation planner. Your goal is to generate two distinct trip plans: the absolute CHEAPEST and the absolute FASTEST.
 
-**//-- Plan Generation Rules --//**
-1.  **Efficiency First:** Prioritize direct routes. Minimize transfers. Suggest walking only for very short connections (e.g., under 500m between a bus stop and an MTR station).
-2.  **Mode Selection:** Generally, prefer MTR for long-distance or cross-harbour travel. Prefer buses for routes not well-served by MTR or for shorter, more direct trips.
-3.  **Infer Locations:** The user's start and end points may be landmarks, buildings, or general areas (e.g., "K11 Musea", "Tuen Mun Town Plaza"). You MUST use your knowledge and Google Search to identify the most appropriate, nearby KMB bus stop or MTR station from the "VALID TRANSPORT HUBS" list provided below. This inferred, official stop/station name is what you must use in the plan steps.
-4.  **Strict Data Adherence:** All bus stop and MTR station names used in your plan MUST EXACTLY MATCH a name from the "VALID TRANSPORT HUBS" list. Do not invent or guess names. For bus routes, only use routes from the "AVAILABLE KMB ROUTES" list. For MTR, the "direction" should be the name of the terminal station for that line in the direction of travel, in Traditional Chinese (e.g., "往荃灣", "往中環").
+**//-- Core Task --//**
+1.  **Generate Two Plans:** Create two separate, complete trip plans for the user's request.
+    -   **Plan 1: The CHEAPEST.** This plan must prioritize the lowest possible total cost, even if it takes longer.
+    -   **Plan 2: The FASTEST.** This plan must prioritize the minimum possible travel time, even if it costs more.
+2.  **Use Google Search Extensively:** You MUST use Google Search to find:
+    -   **Fares:** "KMB route [route number] price", "MTR fare from [station] to [station] Octopus". Search for exact fares.
+    -   **Travel Times:** Use Google Maps for realistic travel time estimates for MTR, bus, and walking segments.
+    -   **Service Status:** Check for any real-time disruptions, delays, or route changes for all relevant transport modes.
+3.  **Strict Data Adherence:**
+    -   All transport hubs (stops/stations) MUST EXACTLY MATCH a name from the "VALID TRANSPORT HUBS" list.
+    -   Bus routes must come from "AVAILABLE KMB ROUTES".
+    -   MTR directions must be the terminal station name in Traditional Chinese (e.g., "往荃灣").
+4.  **Infer Locations:** If the start/end points are landmarks (e.g., "K11 Musea"), use Google Search to find the nearest official transport hub from the provided lists and use that exact name.
 
 **//-- Output Format: JSON ONLY --//**
-1.  You MUST return the final plan in a single, valid JSON object.
-2.  The JSON must be enclosed in a \`\`\`json markdown block.
-3.  Do NOT include any text, conversation, or explanation outside of the JSON block.
-4.  The JSON object must follow this exact structure:
+1.  You MUST return a single, valid JSON object in a \`\`\`json markdown block.
+2.  Your entire response MUST be ONLY the JSON object. Do NOT include any text, conversation, or explanation outside the JSON block.
+3.  The JSON object MUST contain two top-level keys: 'cheapest_plan' and 'fastest_plan'.
+4.  The structure MUST be exactly as follows:
     \`\`\`
     {
-      "plan": [
-        {
-          "type": "walk" | "bus" | "mtr",
-          "summary": "A brief, clear summary of this step in Traditional Chinese.",
-          "details": { ... }
-        }
-      ]
+      "cheapest_plan": {
+        "current_conditions": "Brief note on service status for this plan (in English).",
+        "total_time_minutes": 55,
+        "total_cost_hkd": 12.5,
+        "plan": [
+          {
+            "type": "walk" | "bus" | "mtr",
+            "summary": "A brief summary of this step in Traditional Chinese.",
+            "details": { ... },
+            "duration_minutes": 10,
+            "cost_hkd": 0
+          }
+        ]
+      },
+      "fastest_plan": {
+        "current_conditions": "Brief note on service status for this plan (in English).",
+        "total_time_minutes": 30,
+        "total_cost_hkd": 22.0,
+        "plan": [ ... ]
+      }
     }
     \`\`\`
-5.  **Details object structure:**
-    -   **type: "walk"** -> \`{ "instruction": "Walking directions in Traditional Chinese." }\`
-    -   **type: "bus"** -> \`{ "route": "1A", "boarding_stop": "尖沙咀碼頭", "alighting_stop": "旺角街市", "num_stops": 5 }\` (Use names from VALID TRANSPORT HUBS)
-    -   **type: "mtr"** -> \`{ "line": "荃灣綫", "boarding_station": "尖沙咀", "alighting_station": "旺角", "direction": "往荃灣", "num_stops": 2 }\` (Use names from VALID TRANSPORT HUBS & AVAILABLE MTR LINES)
+5.  **Details Object Structure:**
+    -   **type: "walk"**: \`{ "instruction": "Walking directions in Traditional Chinese." }\`
+    -   **type: "bus"**: \`{ "route": "1A", "boarding_stop": "尖沙咀碼頭", "alighting_stop": "旺角街市", "num_stops": 5 }\`
+    -   **type: "mtr"**: \`{ "line": "荃灣綫", "boarding_station": "尖沙咀", "alighting_station": "旺角", "direction": "往荃灣", "num_stops": 2 }\`
+6.  **Cost and Time Rules:**
+    -   The 'cost_hkd' for a walk step is always 0.
+    -   The 'duration_minutes' must be a realistic estimate for each step.
 
 **//-- Reference Data --//**
 
@@ -103,18 +211,74 @@ Now, based on this data and live information from Google Search, generate a mult
             if (!apiKey) {
                 throw new Error("API key is missing.");
             }
-            const ai = new GoogleGenAI({ apiKey });
 
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash-lite",
-                contents: `Generate a trip plan in Hong Kong from "${origin}" to "${destination}".`,
-                config: {
-                    systemInstruction: promptContext,
-                    tools: [{ googleSearch: {} }],
+            // Prepare the content with location context if available
+            let contentText = `Generate a trip plan in Hong Kong from "${origin}" to "${destination}".`;
+            if (userLocation && origin.includes('Current Location')) {
+                contentText += ` The starting location coordinates are: ${userLocation.lat}, ${userLocation.lng}.`;
+            }
+
+            // Use direct fetch to the proxy with Google Search tools
+            const requestBody = {
+                contents: [{
+                    parts: [{
+                        text: contentText
+                    }]
+                }],
+                systemInstruction: {
+                    parts: [{
+                        text: promptContext + `
+
+                    IMPORTANT: You have access to Google Search. Use it to:
+                    1. Find real-time information about Hong Kong public transport
+                    2. Check for any service disruptions or delays
+                    3. Get current operating hours and schedules
+                    4. Find alternative routes if needed
+                    5. Verify bus stop locations and accessibility
+                      
+                    When searching, use specific queries like:
+                    - "Hong Kong KMB bus route [route_number] current status"
+                    - "MTR [line_name] service status today"
+                    - "[location_name] Hong Kong public transport access"
+                    - "Hong Kong transport disruptions today"
+
+                    Always provide the most current and accurate information available.\n\nFINAL REMINDER: Your entire output must be a single JSON object within a \`\`\`json markdown block. Do not add any other text before or after the markdown block.`
+                    }]
                 },
+                tools: [{
+                     googleSearch: {}
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 3072,
+                }
+            };
+
+            console.log('Making request to AI proxy...');
+            const response = await fetch(`https://ai-proxy.chatwise.app/generativelanguage/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
             });
-            
-            const textResponse = response.text;
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('AI API Error:', response.status, errorText);
+                throw new Error(`AI API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            const responseData = await response.json();
+            console.log('AI Response:', responseData);
+
+            if (!responseData.candidates || !responseData.candidates[0] || !responseData.candidates[0].content) {
+                throw new Error('Invalid response format from AI API');
+            }
+
+            const textResponse = responseData.candidates[0].content.parts[0].text;
             let parsedPlan;
 
             const jsonMatch = textResponse.match(/```json\n([\s\S]*?)\n```/);
@@ -136,7 +300,7 @@ Now, based on this data and live information from Google Search, generate a mult
                 }
             }
             
-            if (!parsedPlan || !parsedPlan.plan) {
+            if (!parsedPlan || !parsedPlan.cheapest_plan || !parsedPlan.fastest_plan) {
                  throw new Error("The generated plan is incomplete or in an invalid format.");
             }
             
@@ -155,20 +319,49 @@ Now, based on this data and live information from Google Search, generate a mult
         } finally {
             setLoading(false);
         }
-    }, [origin, destination, promptContext, isButtonDisabled, apiKey]);
+    }, [origin, destination, promptContext, isButtonDisabled, apiKey, userLocation]);
 
     return (
         <div className="space-y-4 pt-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg space-y-4 border border-gray-200 dark:border-gray-700">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white text-center">AI Trip Planner</h2>
                 <div className="space-y-3">
-                    <AutoCompleteInput
-                        value={origin}
-                        onChange={setOrigin}
-                        placeholder="From: e.g., Tsim Sha Tsui Ferry Pier"
-                        suggestions={locations}
-                        icon={<svg className="h-6 w-6 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>}
-                    />
+                    <div className="relative">
+                        <AutoCompleteInput
+                            value={origin}
+                            onChange={setOrigin}
+                            placeholder="From: e.g., Tsim Sha Tsui Ferry Pier"
+                            suggestions={locations}
+                            icon={<svg className="h-6 w-6 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>}
+                        />
+                        <button
+                            onClick={getUserLocation}
+                            disabled={isGettingLocation}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md text-gray-400 hover:text-[#00f5d4] hover:bg-gray-100 dark:text-gray-500 dark:hover:text-[#00f5d4] dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                            title={isGettingLocation ? "Getting your location..." : "Use my current location"}
+                            aria-label={isGettingLocation ? "Getting your location..." : "Use my current location"}
+                        >
+                            {isGettingLocation ? (
+                                <svg className="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 6v6l4 2"></path>
+                                </svg>
+                            ) : (
+                                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            )}
+                        </button>
+                        {isGettingLocation && (
+                            <div className="absolute -bottom-6 left-0 text-xs text-[#00f5d4] dark:text-[#00f5d4] flex items-center space-x-1">
+                                <svg className="h-3 w-3 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" r="3"/>
+                                </svg>
+                                <span>Getting your location...</span>
+                            </div>
+                        )}
+                    </div>
                     <AutoCompleteInput
                         value={destination}
                         onChange={setDestination}

@@ -45,7 +45,7 @@ const NavButton: React.FC<{
     <button
         onClick={onClick}
         disabled={isDisabled}
-        className={`flex flex-col items-center justify-center w-full pt-2 pb-1 transition-colors duration-200 relative ${
+        className={`flex flex-col items-center justify-center w-full pt-3 pb-2 transition-colors duration-200 relative ${
             isActive
                 ? 'text-[color:var(--accent)]'
                 : 'text-gray-500 dark:text-gray-400'
@@ -73,7 +73,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, disabled
     ];
     
     return (
-        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 z-30">
+        <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 z-30">
             <div className="max-w-4xl mx-auto h-full grid grid-cols-4">
                 {tabs.map(tab => (
                     <NavButton

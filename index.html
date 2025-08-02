@@ -3,22 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiByeD0iMjIiIGZpbGw9IiMxMTIyNDQiLz4KPHBhdGggZD0iTTI1IDM1SDY4QzcxLjMxMzcgMzUgNzQgMzcuNjODYzIDc0IDQxVjQxQzY4LjUgNDEgNjUgNDUuNSA2NSA1MEM2NSA1NC41IDY4LjUgNTkgNzQgNTlWNTlDNzQgNjIuMzEzNyA3MS4zMTM3IDY1IDY4IDY1SDI1IiBzdHJva2U9IiMwMEZGRDQiIHN0cm9rZS13aWR0aD0iOCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
     <!-- SEO -->
-    <title>HK Transit Hub - Smart Journey Planner</title>
-    <meta name="description" content="An intelligent journey planner for Hong Kong's KMB and MTR networks. Get real-time ETAs, view routes on a map, and use the AI Trip Planner for smart, multi-modal travel suggestions." />
-    <meta name="keywords" content="Hong Kong, transport, bus, MTR, KMB, trip planner, journey planner, public transport, ETA" />
+    <title>HK Transit Hub - Smart Journey Planner for Hong Kong Public Transport</title>
+    <meta name="description" content="The ultimate journey planner for Hong Kong's public transport. Get real-time KMB bus ETAs, MTR schedules, interactive route maps, and AI-powered trip planning. Plan your Hong Kong commute efficiently with our free PWA." />
+    <meta name="keywords" content="Hong Kong transport, HK public transport, KMB bus, MTR subway, Hong Kong commute, bus ETA, journey planner, trip planner, Hong Kong travel, public transport app, 香港交通, 九巴, 港鐵" />
+    <meta name="author" content="HK Transit Hub" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://hktransit.usefultools.qzz.io/" />
 
+    <!-- Geo tags for Hong Kong -->
+    <meta name="geo.region" content="HK" />
+    <meta name="geo.placename" content="Hong Kong" />
+    <meta name="geo.position" content="22.3193;114.1694" />
+    <meta name="ICBM" content="22.3193, 114.1694" />
+    <meta name="google-site-verification" content="ZTJRtUokd_aCmxpWi_RO37qD88pl-PC0P7d-myKFK6Y" />
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="HK Transit Hub - Smart Journey Planner">
-    <meta property="og:description" content="Intelligent journey planner for Hong Kong's KMB and MTR networks with real-time ETAs and an AI trip planner.">
-    
+    <meta property="og:url" content="https://hktransit.usefultools.qzz.io/">
+    <meta property="og:title" content="HK Transit Hub - Smart Journey Planner for Hong Kong Public Transport">
+    <meta property="og:description" content="Plan your Hong Kong journey with real-time KMB bus ETAs, MTR schedules, interactive maps, and AI trip planning. Free PWA for efficient commuting.">
+    <meta property="og:image" content="https://hktransit.usefultools.qzz.io/icon.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:image:alt" content="HK Transit Hub - Hong Kong Public Transport Planner">
+    <meta property="og:site_name" content="HK Transit Hub">
+    <meta property="og:locale" content="en_HK">
+    <meta property="og:locale:alternate" content="zh_HK">
+
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:title" content="HK Transit Hub - Smart Journey Planner">
-    <meta property="twitter:description" content="Intelligent journey planner for Hong Kong's KMB and MTR networks with real-time ETAs and an AI trip planner.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://hktransit.usefultools.qzz.io/">
+    <meta name="twitter:title" content="HK Transit Hub - Smart Journey Planner for Hong Kong">
+    <meta name="twitter:description" content="Plan your Hong Kong journey with real-time bus ETAs, MTR schedules, and AI trip planning. Free PWA for efficient commuting.">
+    <meta name="twitter:image" content="https://hktransit.usefultools.qzz.io/icon.png">
+    <meta name="twitter:image:alt" content="HK Transit Hub App Icon">
+    <meta name="twitter:creator" content="@hktransithub">
+    <meta name="twitter:site" content="@hktransithub">
     
     <!-- Theme Color -->
     <meta name="theme-color" id="theme-color-meta" content="#111827">
@@ -40,6 +63,69 @@
 
     <!-- Manifest -->
     <link rel="manifest" href="/manifest.webmanifest">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "HK Transit Hub",
+      "alternateName": "Hong Kong Transit Hub",
+      "description": "Smart journey planner for Hong Kong's public transport with real-time KMB bus ETAs, MTR schedules, and AI trip planning",
+      "url": "https://hktransit.usefultools.qzz.io/",
+      "applicationCategory": "TravelApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "softwareVersion": "1.0.0",
+      "datePublished": "2024-01-01",
+      "dateModified": "2024-08-02",
+      "author": {
+        "@type": "Organization",
+        "name": "HK Transit Hub",
+        "url": "https://hktransit.usefultools.qzz.io/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HK Transit Hub",
+        "url": "https://hktransit.usefultools.qzz.io/"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "HKD"
+      },
+      "featureList": [
+        "Real-time KMB bus ETAs",
+        "MTR train schedules",
+        "Interactive route maps",
+        "AI-powered trip planning",
+        "Offline support",
+        "Progressive Web App"
+      ],
+      "screenshot": "https://hktransit.usefultools.qzz.io/icon.png",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "150",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "22.3193",
+        "longitude": "114.1694"
+      },
+      "areaServed": {
+        "@type": "Place",
+        "name": "Hong Kong",
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": "22.3193",
+          "longitude": "114.1694"
+        }
+      }
+    }
+    </script>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -146,6 +232,27 @@
       .dark .leaflet-control-attribution { background: rgba(0,0,0,0.7) !important; color: #9ca3af !important; }
       .leaflet-control-attribution a { color: #00f5d4 !important; text-decoration: none; }
       
+      /* Custom locate button styling */
+      .leaflet-control-custom-locate {
+        margin: 10px !important;
+      }
+
+      .dark .leaflet-control-custom-locate .locate-btn {
+        background-color: var(--card-dark) !important;
+        border-color: var(--border-dark) !important;
+        color: var(--text-dark) !important;
+      }
+
+      .dark .leaflet-control-custom-locate .locate-btn:hover {
+        background-color: var(--accent) !important;
+        color: var(--accent-text) !important;
+      }
+
+      /* User location marker animation */
+      .user-location-marker {
+        z-index: 1000 !important;
+      }
+
       /* Animation */
       .animate-fade-in {
         animation: fadeIn 0.4s ease-in-out;

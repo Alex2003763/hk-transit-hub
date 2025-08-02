@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface PWAInstallPromptProps {
   onInstall: () => void;
@@ -7,6 +7,18 @@ interface PWAInstallPromptProps {
 }
 
 const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ onInstall, onDismiss, show }) => {
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (show) {
+      timer = setTimeout(() => {
+        onDismiss();
+      }, 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [show, onDismiss]);
+
   if (!show) return null;
 
   return (

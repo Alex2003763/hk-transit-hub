@@ -1,17 +1,21 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { Route, StopInfo, RouteStop, Eta } from './types';
-import { getRouteList, getAllStops, getRouteStops, getStopEta } from './services/kmbApi';
+import { getRouteList, getAllStops, getRouteStops, getStopEta, preloadCriticalData } from './services/kmbApi';
 import { mtrStations, mtrLines, MtrStation } from './data/mtrStations';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import RouteSearch from './components/RouteSearch';
-import RouteDetails from './components/RouteDetails';
-import MtrPanel from './components/MtrPanel';
-import TripPlannerPanel from './components/TripPlannerPanel';
-import SettingsPanel from './components/SettingsPanel';
 import Loader from './components/Loader';
 import ErrorDisplay from './components/ErrorDisplay';
+import ErrorBoundary from './components/ErrorBoundary';
+import { updatePageSEO, SEO_TEMPLATES } from './utils/seo';
+
+// Lazy load heavy components
+const RouteDetails = React.lazy(() => import('./components/RouteDetails'));
+const MtrPanel = React.lazy(() => import('./components/MtrPanel'));
+const TripPlannerPanel = React.lazy(() => import('./components/TripPlannerPanel'));
+const SettingsPanel = React.lazy(() => import('./components/SettingsPanel'));
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { usePWA } from './hooks/usePWA';
@@ -150,10 +154,14 @@ function App() {
       try {
         setError(null);
         setLoading(prev => ({ ...prev, initial: true }));
+
+        // Try to preload critical data first (this will use cache if available)
+        await preloadCriticalData();
+
         const [routesRes, stopsRes] = await Promise.all([getRouteList(), getAllStops()]);
-        
+
         setRawRoutes(routesRes); // Keep all routes for AI context
-        
+
         const uniqueRoutes = new Map<string, Route>();
         routesRes.forEach(route => {
             // Prioritize outbound routes for display to avoid duplicates like 1A, 1A
@@ -188,7 +196,11 @@ function App() {
     setSelectedRoute(route);
     setRouteStops({ outbound: [], inbound: [] }); // Reset previous stops
     setEtas({}); // Reset ETAs
+
     if (route) {
+      // Update SEO for route details
+      updatePageSEO(SEO_TEMPLATES.routeDetails(route.route, route.orig_en, route.dest_en));
+
       try {
         setError(null);
         setLoading(prev => ({ ...prev, details: true }));
@@ -203,6 +215,9 @@ function App() {
       } finally {
         setLoading(prev => ({ ...prev, details: false }));
       }
+    } else {
+      // Reset to KMB page SEO when going back
+      updatePageSEO(SEO_TEMPLATES.kmb);
     }
   }, []);
 
@@ -278,29 +293,65 @@ function App() {
         )
      }
      return (
-        <RouteDetails
-            route={selectedRoute}
-            stops={routeStops}
-            stopInfos={allStops}
-            etas={etas}
-            onFetchEta={handleFetchEta}
-            loadingDetails={loading.details}
-            loadingEtaStopId={loading.eta}
-            theme={theme}
-        />
+        <Suspense fallback={<Loader message="Loading route details..." />}>
+          <RouteDetails
+              route={selectedRoute}
+              stops={routeStops}
+              stopInfos={allStops}
+              etas={etas}
+              onFetchEta={handleFetchEta}
+              loadingDetails={loading.details}
+              loadingEtaStopId={loading.eta}
+              theme={theme}
+          />
+        </Suspense>
      )
   }
   
+  // Update SEO when tab changes
+  useEffect(() => {
+    switch(activeTab) {
+      case 'planner':
+        updatePageSEO(SEO_TEMPLATES.planner);
+        break;
+      case 'kmb':
+        if (!selectedRoute) {
+          updatePageSEO(SEO_TEMPLATES.kmb);
+        }
+        break;
+      case 'mtr':
+        updatePageSEO(SEO_TEMPLATES.mtr);
+        break;
+      case 'settings':
+        updatePageSEO(SEO_TEMPLATES.settings);
+        break;
+      default:
+        updatePageSEO(SEO_TEMPLATES.home);
+    }
+  }, [activeTab, selectedRoute]);
+
   const renderContent = () => {
     switch(activeTab) {
       case 'planner':
-        return <TripPlannerPanel allRoutes={rawRoutes} locations={locations} apiKey={apiKey} />;
+        return (
+          <Suspense fallback={<Loader message="Loading trip planner..." />}>
+            <TripPlannerPanel allRoutes={rawRoutes} locations={locations} apiKey={apiKey} />
+          </Suspense>
+        );
       case 'kmb':
         return renderKmbContent();
       case 'mtr':
-        return <MtrPanel />;
+        return (
+          <Suspense fallback={<Loader message="Loading MTR information..." />}>
+            <MtrPanel />
+          </Suspense>
+        );
       case 'settings':
-        return <SettingsPanel currentApiKey={apiKey} onSaveApiKey={handleSaveApiKey} theme={theme} setTheme={setTheme} />;
+        return (
+          <Suspense fallback={<Loader message="Loading settings..." />}>
+            <SettingsPanel currentApiKey={apiKey} onSaveApiKey={handleSaveApiKey} theme={theme} setTheme={setTheme} />
+          </Suspense>
+        );
       default:
         return null;
     }
@@ -309,60 +360,62 @@ function App() {
   const showBack = activeTab === 'kmb' && !!selectedRoute;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans flex flex-col">
-      <Header 
-        onBack={handleBack} 
-        showBack={showBack}
-      />
-      <main className="px-4 max-w-4xl w-full mx-auto flex-grow pb-24 flex flex-col">
-        {renderContent()}
-      </main>
-       <BottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        disabled={showBack}
-       />
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans flex flex-col">
+        <Header
+          onBack={handleBack}
+          showBack={showBack}
+        />
+        <main className="px-4 max-w-4xl w-full mx-auto flex-grow pb-24 flex flex-col">
+          {renderContent()}
+        </main>
+         <BottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          disabled={showBack}
+         />
 
-       {/* PWA Components */}
-       <PWAUpdatePrompt
-         show={showUpdatePrompt}
-         onUpdate={updateApp}
-         onDismiss={dismissUpdate}
-       />
-       <PWAInstallPrompt
-         show={showInstallPrompt && isInstallable}
-         onInstall={handleInstallApp}
-         onDismiss={handleDismissInstall}
-       />
+         {/* PWA Components */}
+         <PWAUpdatePrompt
+           show={showUpdatePrompt}
+           onUpdate={updateApp}
+           onDismiss={dismissUpdate}
+         />
+         <PWAInstallPrompt
+           show={showInstallPrompt && isInstallable}
+           onInstall={handleInstallApp}
+           onDismiss={handleDismissInstall}
+         />
 
-       {/* Offline Ready Notification */}
-       {offlineReady && (
-         <div className="fixed bottom-4 left-4 right-4 z-40 animate-fade-in">
-           <div className="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3">
-             <div className="flex items-center justify-between">
-               <div className="flex items-center space-x-2">
-                 <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                   </svg>
+         {/* Offline Ready Notification */}
+         {offlineReady && (
+           <div className="fixed bottom-4 left-4 right-4 z-40 animate-fade-in">
+             <div className="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center space-x-2">
+                   <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                     <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                     </svg>
+                   </div>
+                   <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                     App ready to work offline
+                   </span>
                  </div>
-                 <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                   App ready to work offline
-                 </span>
+                 <button
+                   onClick={dismissOfflineReady}
+                   className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+                 >
+                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                   </svg>
+                 </button>
                </div>
-               <button
-                 onClick={dismissOfflineReady}
-                 className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
-               >
-                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                 </svg>
-               </button>
              </div>
            </div>
-         </div>
-       )}
-    </div>
+         )}
+      </div>
+    </ErrorBoundary>
   );
 }
 

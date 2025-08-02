@@ -50,6 +50,20 @@ interface TripPlanResultProps {
     plan: TripPlan;
 }
 
+const TripSummary: React.FC<{ time: number; cost: number }> = ({ time, cost }) => (
+    <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex justify-around text-center shadow-sm">
+        <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total Time</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{time} <span className="text-sm font-normal">min</span></p>
+        </div>
+        <div className="border-l border-gray-200 dark:border-gray-600"></div>
+        <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Total Cost</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">HK$ {cost.toFixed(1)}</p>
+        </div>
+    </div>
+);
+
 const TripPlanResult: React.FC<TripPlanResultProps> = ({ plan }) => {
     if (!plan || !plan.plan || plan.plan.length === 0) {
         return <ErrorDisplay message="The generated plan is empty or invalid." />;
@@ -99,12 +113,36 @@ const TripPlanResult: React.FC<TripPlanResultProps> = ({ plan }) => {
     return (
         <div className="pt-4 animate-fade-in">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Your Trip Plan:</h3>
+
+            <TripSummary time={plan.total_time_minutes} cost={plan.total_cost_hkd} />
+
+            {/* Current Conditions Alert */}
+            {plan.current_conditions && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-start">
+                        <svg className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div>
+                            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Current Service Information</h4>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">{plan.current_conditions}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="relative">
                 {plan.plan.map((step, index) => {
                      const { icon, color } = getStepConfig(step.type);
                      return (
                         <StepCard key={index} icon={icon} typeColor={color} isLast={index === plan.plan.length -1}>
-                            <p className="font-bold text-base text-gray-900 dark:text-white mb-2">{step.summary}</p>
+                            <div className="flex justify-between items-start mb-2">
+                                <p className="font-bold text-base text-gray-900 dark:text-white flex-1 pr-2">{step.summary}</p>
+                                <div className="text-right flex-shrink-0">
+                                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{step.duration_minutes} min</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">HK$ {step.cost_hkd.toFixed(1)}</p>
+                                </div>
+                            </div>
                             {renderStepDetails(step)}
                         </StepCard>
                     );
