@@ -1,7 +1,16 @@
-
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
-import { Route, StopInfo, RouteStop, Eta } from './types';
+import {
+  Route,
+  StopInfo,
+  RouteStop,
+  Eta,
+  MinibusRoute,
+  MinibusStop,
+  ActiveTab,
+  Theme
+} from './types';
 import { getRouteList, getAllStops, getRouteStops, getStopEta, preloadCriticalData } from './services/kmbApi';
+import { getMinibusRoutes } from './services/minibusApi';
 import { mtrStations, mtrLines, MtrStation } from './data/mtrStations';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -16,13 +25,12 @@ const RouteDetails = React.lazy(() => import('./components/RouteDetails'));
 const MtrPanel = React.lazy(() => import('./components/MtrPanel'));
 const TripPlannerPanel = React.lazy(() => import('./components/TripPlannerPanel'));
 const SettingsPanel = React.lazy(() => import('./components/SettingsPanel'));
+const MinibusPanel = React.lazy(() => import('./components/MinibusPanel'));
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import SafariInstallPrompt from './components/SafariInstallPrompt';
 import { usePWA } from './hooks/usePWA';
 
-type ActiveTab = 'planner' | 'kmb' | 'mtr' | 'settings';
-type Theme = 'light' | 'dark';
 export type Location = { name_tc: string; name_en: string; };
 
 
@@ -38,6 +46,9 @@ function App() {
   
   // App-wide state
   const [activeTab, setActiveTab] = useState<ActiveTab>('planner');
+  const [minibusRoutes, setMinibusRoutes] = useState<MinibusRoute[]>([]);
+  const [minibusStops, setMinibusStops] = useState<Map<string, MinibusStop>>(new Map());
+  const [selectedMinibusRoute, setSelectedMinibusRoute] = useState<MinibusRoute | null>(null);
   const [loading, setLoading] = useState({
     initial: true,
     details: false,
@@ -161,7 +172,12 @@ function App() {
         // Try to preload critical data first (this will use cache if available)
         await preloadCriticalData();
 
-        const [routesRes, stopsRes] = await Promise.all([getRouteList(), getAllStops()]);
+        // Fetch KMB data and Minibus routes in parallel
+        const [routesRes, stopsRes, minibusRoutesRes] = await Promise.all([
+          getRouteList(), 
+          getAllStops(),
+          getMinibusRoutes() // Preload minibus routes
+        ]);
 
         setRawRoutes(routesRes); // Keep all routes for AI context
 
@@ -177,6 +193,9 @@ function App() {
         const stopsMap = new Map<string, StopInfo>();
         stopsRes.forEach(stop => stopsMap.set(stop.stop, stop));
         setAllStops(stopsMap);
+
+        // Set minibus routes in state
+        setMinibusRoutes(minibusRoutesRes);
 
       } catch (e) {
         setError('Failed to load initial bus data. Please check your connection and try again later.');
@@ -309,6 +328,8 @@ function App() {
               loadingDetails={loading.details}
               loadingEtaStopId={loading.eta}
               theme={theme}
+              showBack={showBack}
+              onBack={handleBack}
           />
         </Suspense>
      )
@@ -352,6 +373,18 @@ function App() {
             <MtrPanel />
           </Suspense>
         );
+      case 'minibus':
+        return (
+          <Suspense fallback={<Loader message="Loading minibus information..." />}>
+            <MinibusPanel
+              onBack={() => {
+                setSelectedMinibusRoute(null);
+              }}
+              showBack={activeTab === 'minibus' && !!selectedMinibusRoute}
+              onSelectRoute={setSelectedMinibusRoute}
+            />
+          </Suspense>
+        );
       case 'settings':
         return (
           <Suspense fallback={<Loader message="Loading settings..." />}>
@@ -363,7 +396,7 @@ function App() {
     }
   }
 
-  const showBack = activeTab === 'kmb' && !!selectedRoute;
+  const showBack = (activeTab === 'kmb' && !!selectedRoute) || (activeTab === 'minibus' && !!selectedMinibusRoute);
 
   return (
     <ErrorBoundary>

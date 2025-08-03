@@ -9,11 +9,23 @@ const BASE_URL = import.meta.env.DEV
 
 async function fetchKmbApi<T>(endpoint: string, cacheConfig?: { maxAge: number; maxSize: number }): Promise<T> {
   const cacheKey = `kmb:${endpoint}`;
-
+  
   // Try to get from cache first
   const cachedData = cacheManager.get<T>(cacheKey);
   if (cachedData) {
     console.log(`Cache hit for ${endpoint}`);
+    
+    // Background revalidation if cache is about to expire (within 10 seconds)
+    if (cacheConfig) {
+      const cacheItem = cacheManager.getCacheItem(cacheKey);
+      if (cacheItem && (cacheItem.expiresAt - Date.now()) < 10000) {
+        console.log(`Cache nearing expiration, revalidating in background for ${endpoint}`);
+        fetchKmbApi<T>(endpoint, cacheConfig).catch(error =>
+          console.error(`Background revalidation failed for ${endpoint}:`, error)
+        );
+      }
+    }
+    
     return cachedData;
   }
 

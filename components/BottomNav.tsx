@@ -1,6 +1,7 @@
 import React from 'react';
+import MinibusIcon from './icons/MinibusIcon';
 
-type ActiveTab = 'planner' | 'kmb' | 'mtr' | 'settings';
+type ActiveTab = 'planner' | 'kmb' | 'mtr' | 'minibus' | 'settings';
 
 interface BottomNavProps {
   activeTab: ActiveTab;
@@ -62,12 +63,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
         { id: 'planner', label: 'Planner', icon: <PlannerIcon /> },
         { id: 'kmb', label: 'Bus', icon: <KmbIcon /> },
         { id: 'mtr', label: 'MTR', icon: <MtrIcon /> },
+        { id: 'minibus', label: 'Minibus', icon: <MinibusIcon className="h-6 w-6" /> },
         { id: 'settings', label: 'Settings', icon: <SettingsIcon /> },
     ];
     
     return (
         <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 z-30">
-            <div className="max-w-4xl mx-auto h-full grid grid-cols-4">
+            <div className="max-w-4xl mx-auto h-full grid grid-cols-5">
                 {tabs.map(tab => (
                     <NavButton
                         key={tab.id}
@@ -81,5 +83,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
         </nav>
     );
 };
+
 
 export default BottomNav;

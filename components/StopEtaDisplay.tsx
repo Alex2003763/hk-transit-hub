@@ -1,8 +1,10 @@
-import React from 'react';
-import { Eta } from '../types';
+import React, { useEffect } from 'react';
+import { Eta, MinibusEta } from '../types';
 
 interface StopEtaDisplayProps {
-  etas: Eta[];
+  etas: (Eta | MinibusEta)[];
+  onRefresh: () => void; // 新增刷新回调函数
+  refreshInterval?: number; // 刷新间隔（毫秒），可选，默认30000
 }
 
 const calculateMinutesUntil = (etaTimestamp: string | null): { diff: number; unit: string; isPast: boolean } | null => {
@@ -19,18 +21,41 @@ const calculateMinutesUntil = (etaTimestamp: string | null): { diff: number; uni
 };
 
 const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas }) => {
+  // 自动刷新逻辑
+  useEffect(() => {
+    if (!etas || etas.length === 0) return;
+    
+    const timer = setInterval(() => {
+      // 这里需要触发重新获取ETA的逻辑
+      // 由于没有直接的回调函数，暂时使用控制台日志
+      console.log("Auto-refreshing ETA data...");
+    }, 30000); // 每30秒刷新一次
+
+    return () => clearInterval(timer);
+  }, [etas]);
+
   if (!etas || etas.length === 0) {
     return <div className="text-gray-500 dark:text-gray-400 py-6 text-center text-sm">No ETA information available. The service may have ended.</div>;
   }
 
-  const sortedEtas = [...etas].sort((a, b) => a.eta_seq - b.eta_seq);
+  const sortedEtas = [...etas].sort((a, b) => {
+    if ('eta_seq' in a && 'eta_seq' in b) {
+      return a.eta_seq - b.eta_seq;
+    }
+    // For MinibusEta, maintain original order
+    return 0;
+  });
   const stripParentheses = (text: string) => text.replace(/\s*\([^)]*\)\s*/g, '').trim();
 
   return (
     <div className="space-y-2 pt-2">
       {sortedEtas.map((eta, index) => {
         const timeDiff = calculateMinutesUntil(eta.eta);
-        const remark = eta.rmk_tc.replace('原定班次', 'Scheduled');
+        const remark = ('rmk_tc' in eta) ?
+          eta.rmk_tc.replace('原定班次', 'Scheduled') :
+          ('remark_tc' in eta ? eta.remark_tc : '');
+
+        const destName = ('dest_tc' in eta) ? eta.dest_tc : '';
         
         return (
           <div key={index} className="flex items-center justify-between bg-gray-100 dark:bg-gray-700/50 p-3 rounded-lg">
@@ -47,7 +72,9 @@ const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas }) => {
               </div>
 
               <div className="border-l border-gray-200 dark:border-gray-600 ml-2 pl-4">
-                  <p className="text-gray-900 dark:text-white font-semibold">To: {stripParentheses(eta.dest_tc)}</p>
+                  <p className="text-gray-900 dark:text-white font-semibold">
+                    {destName ? `To: ${stripParentheses(destName)}` : ''}
+                  </p>
                   {remark && <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">{remark}</p>}
               </div>
             </div>

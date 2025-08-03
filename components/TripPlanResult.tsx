@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TripPlan, TripStep, WalkDetails, BusDetails, MtrDetails, TripResult } from '../types';
+import { TripPlan, TripStep, WalkDetails, BusDetails, MtrDetails, TripResult, MinibusDetails } from '../types';
 import ErrorDisplay from './ErrorDisplay';
 
 const WalkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>;
@@ -7,6 +7,11 @@ const KmbIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="145.9 223.65 354.1 354.1" className="h-6 w-6">
         <rect x="145.9" y="331.7" fill="currentColor" width="30.7" height="137.8"/>
         <path fill="currentColor" d="M386.7,344.8c0-6-8.7-13.1-16.7-13.1h-37.3v13.1c0,0-0.6-0.3-1.8-4.2c-1.2-5.1-6.9-8.9-14.6-8.9h-71v111.3h-16.4l-21.5-52.2l30.1-59.1h-31.9l-29.8,59.1l31.9,78.8h252.8c10.7,0,21.5-5.1,26.6-9.8c18.5-18.2,13.1-35.8,8.9-44.2c-6.6-12.8-21.5-19.4-21.5-19.4s10.7-6.3,15.5-13.1c6.6-9.5,6-23.9-1.5-33.4c-9.2-11.9-19.1-17.6-38.5-17.9c-7.8-0.3-21.5,0-21.5,0h-30.7v100.8h30.7v-72.8c0,0,12.8-0.6,24.5,0c12.2,0.6,13.7,22.4-0.9,22.7c-7.8,0.3-16.7,0-16.7,0v25.7c0,0,11.6,0.3,16.4,0c13.4-0.9,19.7,33.4-0.3,34.9c-4.5,0.3-8.7,0-8.7,0H276.4v-82.6h25.7v72.2h30.7v-72.2h23.3v72.2h30.7v-72.2v-15.7H386.7z"/>
+    </svg>
+);
+const MinibusIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h2a2 2 0 002-2V7M3 5h18M5 5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5z" />
     </svg>
 );
 const MtrIcon = () => (
@@ -96,16 +101,43 @@ const PlanDetails: React.FC<{ plan: TripPlan }> = ({ plan }) => {
                         <DetailItem label="Stops" value={mtrDetails.num_stops} />
                     </div>
                 );
+            case 'minibus':
+                const minibusDetails = details as MinibusDetails;
+                return (
+                    <div className="space-y-1.5">
+                        <DetailItem label="Route" value={`${minibusDetails.route} (${minibusDetails.route_zh})`} />
+                        <DetailItem label="Board at" value={minibusDetails.boarding_stop} />
+                        <DetailItem label="Alight at" value={minibusDetails.alighting_stop} />
+                        <DetailItem label="Stops" value={minibusDetails.num_stops} />
+                        {minibusDetails.fare_type === 'flexible' && (
+                            <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                                <span className="font-semibold">注意：</span>此為紅色小巴路線，票價可能會因時段而變動
+                            </div>
+                        )}
+                        {minibusDetails.peak_hour_warning && (
+                            <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                繁忙時段可能需要較長候車時間
+                            </div>
+                        )}
+                    </div>
+                );
             default:
                 return null;
         }
     }
 
-    const getStepConfig = (type: TripStep['type']) => {
-        switch (type) {
+    const getStepConfig = (step: TripStep) => {
+        switch (step.type) {
             case 'walk': return { icon: <WalkIcon />, color: 'bg-green-500' };
             case 'bus': return { icon: <KmbIcon />, color: 'bg-red-500' };
             case 'mtr': return { icon: <MtrIcon />, color: 'bg-red-700' };
+            case 'minibus': {
+                const details = step.details as MinibusDetails;
+                return {
+                    icon: <MinibusIcon />,
+                    color: details.is_gmb ? 'bg-green-600' : 'bg-red-600'
+                };
+            }
             default: return { icon: <div />, color: 'bg-gray-500' };
         }
     };
@@ -130,7 +162,7 @@ const PlanDetails: React.FC<{ plan: TripPlan }> = ({ plan }) => {
 
             <div className="relative">
                 {plan.plan.map((step, index) => {
-                     const { icon, color } = getStepConfig(step.type);
+                     const { icon, color } = getStepConfig(step);
                      return (
                         <StepCard key={index} icon={icon} typeColor={color} isLast={index === plan.plan.length -1}>
                             <div className="flex justify-between items-start mb-2">

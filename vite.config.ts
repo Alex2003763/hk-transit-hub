@@ -180,6 +180,15 @@ export default defineConfig(({ mode }) => {
             headers: {
               'User-Agent': 'HK-Transit-Hub/1.0'
             }
+          },
+          '/api/minibus': {
+            target: 'https://data.etagmb.gov.hk',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/api\/minibus/, ''),
+            secure: true,
+            headers: {
+              'User-Agent': 'HK-Transit-Hub/1.0'
+            }
           }
         }
       }

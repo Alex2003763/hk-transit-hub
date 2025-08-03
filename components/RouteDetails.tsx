@@ -57,7 +57,11 @@ const StopListItem: React.FC<StopListItemProps & { ref: React.Ref<HTMLLIElement>
                <Loader message="Fetching ETA..."/>
             </div>
           ) : (
-            <StopEtaDisplay etas={etas} />
+            <StopEtaDisplay
+              etas={etas}
+              onRefresh={() => onFetchEta()}
+              refreshInterval={30000}
+            />
           )}
         </div>
       )}
@@ -122,9 +126,11 @@ interface RouteDetailsProps {
   loadingDetails: boolean;
   loadingEtaStopId: string;
   theme: Theme;
+  onBack?: () => void;
+  showBack?: boolean;
 }
 
-const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, etas, onFetchEta, loadingDetails, loadingEtaStopId, theme }) => {
+const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, etas, onFetchEta, loadingDetails, loadingEtaStopId, theme, onBack, showBack }) => {
   const [direction, setDirection] = useState<Direction>('outbound');
   const [activeStop, setActiveStop] = useState<string | null>(null);
 
@@ -155,14 +161,25 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, et
   return (
     <div className="flex flex-col gap-4 flex-grow pt-4">
       <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 animate-fade-in">
-        <div className="flex items-center gap-4">
-          <div className="bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800 font-bold rounded-lg w-16 h-12 text-xl mr-3 sm:mr-4 flex items-center justify-center">
+        <div className="flex items-center gap-3 sm:gap-4">
+          {showBack && (
+            <button
+              onClick={onBack}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0 -ml-2"
+              aria-label="返回"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          <div className="bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800 font-bold rounded-lg w-14 h-10 text-lg sm:w-16 sm:h-12 sm:text-xl flex items-center justify-center flex-shrink-0">
             {route.route}
           </div>
-          <div className="overflow-hidden">
-             <p className="text-gray-900 dark:text-white font-bold text-lg truncate">{stripParentheses(route.orig_tc)}</p>
-             <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">→</p>
-             <p className="text-gray-600 dark:text-gray-300 font-semibold text-base truncate">{stripParentheses(route.dest_tc)}</p>
+          <div className="overflow-hidden flex-grow min-w-0">
+             <p className="text-gray-900 dark:text-white font-bold text-base sm:text-lg truncate">{stripParentheses(route.orig_tc)}</p>
+             <p className="text-gray-400 dark:text-gray-500 text-xs sm:text-sm font-medium my-0.5">→</p>
+             <p className="text-gray-600 dark:text-gray-300 font-semibold text-sm sm:text-base truncate">{stripParentheses(route.dest_tc)}</p>
           </div>
         </div>
       </div>

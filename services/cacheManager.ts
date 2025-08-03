@@ -9,12 +9,22 @@ interface CacheConfig {
   maxSize: number; // maximum number of items
 }
 
+interface CacheItem<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number;
+}
+
 class CacheManager {
   private cache = new Map<string, CacheItem<any>>();
   private defaultConfig: CacheConfig = {
     maxAge: 5 * 60 * 1000, // 5 minutes
     maxSize: 100
   };
+
+  getCacheItem<T>(key: string): CacheItem<T> | undefined {
+    return this.cache.get(key);
+  }
 
   set<T>(key: string, data: T, config?: Partial<CacheConfig>): void {
     const finalConfig = { ...this.defaultConfig, ...config };
@@ -121,5 +131,5 @@ export const CACHE_CONFIGS = {
   ROUTES: { maxAge: 30 * 60 * 1000, maxSize: 50 }, // 30 minutes
   STOPS: { maxAge: 60 * 60 * 1000, maxSize: 200 }, // 1 hour
   ROUTE_STOPS: { maxAge: 15 * 60 * 1000, maxSize: 100 }, // 15 minutes
-  ETA: { maxAge: 1 * 60 * 1000, maxSize: 500 }, // 1 minute
+  ETA: { maxAge: 30 * 1000, maxSize: 500 }, // 30 seconds
 } as const;
