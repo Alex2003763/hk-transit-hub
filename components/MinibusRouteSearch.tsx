@@ -38,22 +38,22 @@ const MinibusRouteSearch: React.FC<MinibusRouteSearchProps> = ({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="輸入路線號碼或目的地 (例如: 1, 銅鑼灣, Causeway Bay)"
-            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl py-2.5 px-4 pl-10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-shadow text-sm sm:text-base"
+            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl py-3 px-5 pl-12 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-shadow"
           />
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
 
         {/* 區域過濾器 */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-2">
           {REGIONS.map(region => (
             <button
               key={region}
               onClick={() => setSelectedRegion(selectedRegion === region ? null : region)}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors
-                ${selectedRegion === region
-                  ? 'bg-[color:var(--accent)] text-[color:var(--accent-text)]'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                ${selectedRegion === region 
+                  ? 'bg-[color:var(--accent)] text-[color:var(--accent-text)]' 
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 } border border-gray-200 dark:border-gray-700`}
             >
@@ -79,27 +79,22 @@ const MinibusRouteSearch: React.FC<MinibusRouteSearchProps> = ({
                 <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-14 h-10 flex items-center justify-center text-lg group-hover:bg-[color:var(--accent)] transition-colors">
                   {route.routeNo}
                 </div>
-              <div className="overflow-hidden flex-1 min-w-0">
+              </div>
+              <div className="overflow-hidden flex-1">
                 <div>
-                  <div className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                  <div className="font-semibold text-gray-900 dark:text-white text-base truncate">
                     {route.orig_tc}
                   </div>
-                  <div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm flex items-center gap-1">
-                    <span className="whitespace-nowrap">往</span>
+                  <div className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-1">
+                    <span>往</span>
                     <span className="truncate">{route.dest_tc}</span>
                   </div>
-                  {route.variants && route.variants.length > 1 && (
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {route.variants.length} 個變體
-                    </div>
-                  )}
                   {route.directions && route.directions[0]?.headways && (
-                    <div className="mt-1 text-xs sm:text-sm">
+                    <div className="mt-1 text-sm">
                       <FrequencyDisplay headways={route.directions[0].headways} />
                     </div>
                   )}
                 </div>
-              </div>
               </div>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-300 dark:text-gray-500 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

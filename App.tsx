@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import {
   Route,
@@ -10,7 +11,6 @@ import {
   Theme
 } from './types';
 import { getRouteList, getAllStops, getRouteStops, getStopEta, preloadCriticalData } from './services/kmbApi';
-import { getMinibusRoutes } from './services/minibusApi';
 import { mtrStations, mtrLines, MtrStation } from './data/mtrStations';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -172,12 +172,7 @@ function App() {
         // Try to preload critical data first (this will use cache if available)
         await preloadCriticalData();
 
-        // Fetch KMB data and Minibus routes in parallel
-        const [routesRes, stopsRes, minibusRoutesRes] = await Promise.all([
-          getRouteList(), 
-          getAllStops(),
-          getMinibusRoutes() // Preload minibus routes
-        ]);
+        const [routesRes, stopsRes] = await Promise.all([getRouteList(), getAllStops()]);
 
         setRawRoutes(routesRes); // Keep all routes for AI context
 
@@ -194,9 +189,6 @@ function App() {
         stopsRes.forEach(stop => stopsMap.set(stop.stop, stop));
         setAllStops(stopsMap);
 
-        // Set minibus routes in state
-        setMinibusRoutes(minibusRoutesRes);
-
       } catch (e) {
         setError('Failed to load initial bus data. Please check your connection and try again later.');
         console.error(e);
@@ -209,9 +201,13 @@ function App() {
   }, []);
   
   const handleBack = () => {
-    setSelectedRoute(null);
-    setRouteStops({ outbound: [], inbound: [] });
-    setEtas({});
+    if (activeTab === 'kmb') {
+      setSelectedRoute(null);
+      setRouteStops({ outbound: [], inbound: [] });
+      setEtas({});
+    } else if (activeTab === 'minibus') {
+      setSelectedMinibusRoute(null);
+    }
   };
 
   const handleSelectRoute = useCallback(async (route: Route | null) => {
@@ -328,8 +324,6 @@ function App() {
               loadingDetails={loading.details}
               loadingEtaStopId={loading.eta}
               theme={theme}
-              showBack={showBack}
-              onBack={handleBack}
           />
         </Suspense>
      )
@@ -377,11 +371,10 @@ function App() {
         return (
           <Suspense fallback={<Loader message="Loading minibus information..." />}>
             <MinibusPanel
-              onBack={() => {
-                setSelectedMinibusRoute(null);
-              }}
-              showBack={activeTab === 'minibus' && !!selectedMinibusRoute}
+              onBack={() => setSelectedMinibusRoute(null)}
+              showBack={showBack}
               onSelectRoute={setSelectedMinibusRoute}
+              theme={theme}
             />
           </Suspense>
         );

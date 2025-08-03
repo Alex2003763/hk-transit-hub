@@ -85,6 +85,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ currentApiKey, onSaveApiK
               <span className={`inline-block w-5 h-5 transform transition-transform duration-300 ease-in-out bg-white rounded-full ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
           </div>
+
+          <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-800 dark:text-white font-medium">Reset to Default</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Reset to use the default dark theme</p>
+              </div>
+              <button
+                onClick={handleResetTheme}
+                className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-gray-400"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
