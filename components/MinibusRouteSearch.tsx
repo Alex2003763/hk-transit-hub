@@ -37,7 +37,7 @@ const MinibusRouteSearch: React.FC<MinibusRouteSearchProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="輸入路線號碼或目的地 (例如: 1, 銅鑼灣, Causeway Bay)"
+            placeholder="輸入路線號碼 (例如: 1, 2, 3A)"
             className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl py-3 px-5 pl-12 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-shadow"
           />
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -76,9 +76,8 @@ const MinibusRouteSearch: React.FC<MinibusRouteSearchProps> = ({
                 <div className="text-green-600 dark:text-green-500 group-hover:text-[color:var(--accent)] transition-colors">
                   <MinibusIcon className="w-10 h-10" />
                 </div>
-                <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-20 h-10 flex flex-col items-center justify-center text-lg group-hover:bg-[color:var(--accent)] transition-colors">
-                  <span className="text-sm">{route.routeNo}</span>
-                  <span className="text-xs opacity-80">({route.region_tc})</span>
+                <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg px-3 h-10 flex items-center justify-center text-lg group-hover:bg-[color:var(--accent)] transition-colors">
+                  <span className="text-sm">{route.routeNo} ({route.region_tc})</span>
                 </div>
               </div>
               <div className="overflow-hidden flex-1">
@@ -101,8 +100,8 @@ const MinibusRouteSearch: React.FC<MinibusRouteSearchProps> = ({
         ))}
         {routes.length === 0 && searchTerm && (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <p className="font-semibold">找不到路線 "{searchTerm}"</p>
-            <p className="text-sm">請檢查搜尋內容。</p>
+            <p className="font-semibold">找不到小巴路線 "{searchTerm}"</p>
+            <p className="text-sm">請嘗試輸入不同的路線號碼。</p>
           </div>
         )}
       </ul>

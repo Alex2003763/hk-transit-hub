@@ -107,11 +107,7 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
     return allRoutes
       .filter(route => {
         const matchesSearch = searchTerm === '' ||
-          route.routeNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          route.orig_tc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          route.dest_tc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          route.orig_en.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          route.dest_en.toLowerCase().includes(searchTerm.toLowerCase());
+          route.routeNo.toLowerCase().includes(searchTerm.toLowerCase());
         
         const matchesRegion = !selectedRegion || route.routeId.startsWith(selectedRegion);
         
@@ -150,9 +146,8 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
         {/* 路線資訊卡 */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 animate-fade-in">
           <div className="flex items-center">
-            <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-20 h-12 text-xl mr-4 flex-shrink-0 flex flex-col items-center justify-center">
-              <span className="text-base">{selectedRoute.routeNo}</span>
-              <span className="text-xs opacity-80">({selectedRoute.region_tc})</span>
+            <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg px-4 h-12 text-xl mr-4 flex-shrink-0 flex items-center justify-center">
+              <span className="text-base">{selectedRoute.routeNo} ({selectedRoute.region_tc})</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-gray-900 dark:text-white font-bold text-xl leading-tight truncate" title={selectedRoute.orig_tc}>
