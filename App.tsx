@@ -371,11 +371,12 @@ function App() {
         return (
           <Suspense fallback={<Loader message="Loading minibus information..." />}>
             <MinibusPanel
-              onBack={() => setSelectedMinibusRoute(null)}
-              showBack={showBack}
-              onSelectRoute={setSelectedMinibusRoute}
-              theme={theme}
-            />
+                          onBack={() => setSelectedMinibusRoute(null)}
+                          showBack={showBack}
+                          onSelectRoute={setSelectedMinibusRoute}
+                          externalSelectedRoute={selectedMinibusRoute}
+                          theme={theme}
+                        />
           </Suspense>
         );
       case 'settings':

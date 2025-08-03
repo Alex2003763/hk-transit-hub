@@ -15,12 +15,13 @@ interface MinibusPanelProps {
   onBack: () => void;
   showBack: boolean;
   onSelectRoute: (route: MinibusRoute | null) => void;
+  externalSelectedRoute: MinibusRoute | null;
   theme?: Theme;
 }
 
 type Region = 'HKI' | 'KLN' | 'NT';
 
-const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectRoute, theme = 'light' }) => {
+const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectRoute, externalSelectedRoute, theme = 'light' }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
   const [allRoutes, setAllRoutes] = useState<MinibusRoute[]>([]);
@@ -34,6 +35,16 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
   });
   const [error, setError] = useState<string | null>(null);
   const [activeStop, setActiveStop] = useState<string | null>(null);
+
+  // Reset internal selectedRoute when the external prop changes to null
+  useEffect(() => {
+    if (externalSelectedRoute === null && selectedRoute !== null) {
+      setSelectedRoute(null);
+      setRouteStops([]); // Clear previous stops
+      setEtas({}); // Clear previous ETAs
+      setActiveStop(null); // Reset active stop
+    }
+  }, [externalSelectedRoute, selectedRoute]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -59,18 +70,6 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
     setActiveStop(null); // Reset active stop
     if (onSelectRoute) {
       onSelectRoute(route);
-    }
-
-    try {
-      setError(null);
-      setLoading(prev => ({ ...prev, details: true }));
-      const stops = await getMinibusStops(route.routeId);
-      setRouteStops(stops);
-    } catch (e) {
-      setError(`無法載入路線 ${route.routeNo} 的詳情`);
-      console.error(e);
-    } finally {
-      setLoading(prev => ({ ...prev, details: false }));
     }
 
     if (route) {
