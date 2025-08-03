@@ -165,6 +165,8 @@ export interface MinibusDirection {
 export interface MinibusRoute {
   routeId: string;
   routeNo: string;
+  region: 'HKI' | 'KLN' | 'NT';  // 添加區域資訊
+  region_tc: string;  // 區域中文名稱
   orig_tc: string;
   orig_en: string;
   dest_tc: string;

@@ -1,8 +1,13 @@
 import { cacheManager, CACHE_CONFIGS } from './cacheManager';
 import { MinibusRoute, MinibusStop, MinibusEta } from '../types';
 
-const MINIBUS_API_BASE = '/api/minibus';
+const MINIBUS_API_BASE = import.meta.env.VITE_MINIBUS_API_URL || '/api/minibus';
 const REGIONS = ['HKI', 'KLN', 'NT']; // 香港島、九龍、新界
+const REGION_TC_MAP: { [key: string]: string } = {
+  HKI: '香港島',
+  KLN: '九龍',
+  NT: '新界'
+};
 
 const MINIBUS_CACHE_KEYS = {
   ROUTES: 'minibus_routes',
@@ -51,14 +56,16 @@ export const getMinibusRoutes = async (): Promise<MinibusRoute[]> => {
       const endpoint = `/route/${region}`;
       const data = await fetchMinibusApi<{ routes: string[] }>(endpoint, `minibus_routes_${region}`, CACHE_CONFIGS.ROUTES);
       
-      const routes = data.routes.map((routeCode: string) => ({
+      const routes: MinibusRoute[] = data.routes.map((routeCode: string) => ({
         routeId: `${region}_${routeCode}`,
         routeNo: routeCode,
+        region: region as 'HKI' | 'KLN' | 'NT',
+        region_tc: REGION_TC_MAP[region],
         orig_tc: '',
         orig_en: '',
         dest_tc: '',
         dest_en: '',
-        serviceType: ''
+        serviceType: '',
       }));
       allRoutes.push(...routes);
     } catch (error) {
