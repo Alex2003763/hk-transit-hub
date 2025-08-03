@@ -79,22 +79,27 @@ const MinibusRouteSearch: React.FC<MinibusRouteSearchProps> = ({
                 <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-14 h-10 flex items-center justify-center text-lg group-hover:bg-[color:var(--accent)] transition-colors">
                   {route.routeNo}
                 </div>
-              </div>
               <div className="overflow-hidden flex-1 min-w-0">
                 <div>
-                  <div className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate hidden">
+                  <div className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
                     {route.orig_tc}
                   </div>
-                  <div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm flex items-center gap-1 hidden">
+                  <div className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm flex items-center gap-1">
                     <span className="whitespace-nowrap">往</span>
                     <span className="truncate">{route.dest_tc}</span>
                   </div>
+                  {route.variants && route.variants.length > 1 && (
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {route.variants.length} 個變體
+                    </div>
+                  )}
                   {route.directions && route.directions[0]?.headways && (
                     <div className="mt-1 text-xs sm:text-sm">
                       <FrequencyDisplay headways={route.directions[0].headways} />
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-300 dark:text-gray-500 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

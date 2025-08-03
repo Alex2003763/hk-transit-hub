@@ -142,8 +142,8 @@ export interface MinibusHeadway {
   public_holiday: boolean;
   headway_seq: number;
   start_time: string;
-  end_time: string;
-  frequency: number;
+  end_time: string | null;
+  frequency: number | null;
   frequency_upper: number | null;
 }
 
@@ -162,6 +162,17 @@ export interface MinibusDirection {
   data_timestamp: string;
 }
 
+export interface MinibusRouteVariant {
+  region: string;
+  route_code: string;
+  route_id: number;
+  description_tc: string;
+  description_sc: string;
+  description_en: string;
+  directions: MinibusDirection[];
+  data_timestamp: string;
+}
+
 export interface MinibusRoute {
   routeId: string;
   routeNo: string;
@@ -171,6 +182,7 @@ export interface MinibusRoute {
   dest_en: string;
   serviceType: string;
   directions?: MinibusDirection[];
+  variants?: MinibusRouteVariant[];
 }
 
 export interface MinibusStop {

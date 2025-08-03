@@ -68,7 +68,6 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
     setSelectedRoute(route);
     setRouteStops([]); // Reset previous stops
     setEtas({}); // Reset ETAs
-    setActiveDirection(0); // Reset direction
     if (onSelectRoute) {
       onSelectRoute(route); // 通知父组件路线选择变化
     }
@@ -77,7 +76,9 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
       try {
         setError(null);
         setLoading(prev => ({ ...prev, details: true }));
-        const stops = await getMinibusStops(route.routeId);
+        // 找到當前選定的變體索引
+        const variantIndex = route.variants?.findIndex(v => v.route_id.toString() === route.serviceType) ?? 0;
+        const stops = await getMinibusStops(route.routeId, variantIndex, activeDirection);
         setRouteStops(stops);
       } catch (e) {
         setError(`無法載入路線 ${route.routeNo} 的詳情`);
@@ -86,22 +87,26 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
         setLoading(prev => ({ ...prev, details: false }));
       }
     }
-  }, [onSelectRoute]);
+  }, [onSelectRoute, activeDirection]);
 
   const handleFetchEta = useCallback(async (stopId: string, routeId: string) => {
     if (loading.eta === stopId) return;
 
     try {
       setLoading(prev => ({ ...prev, eta: stopId }));
-      const etaData = await getMinibusEta(stopId, routeId);
-      setEtas(prev => ({ ...prev, [stopId]: etaData }));
+      // 找到當前選定的變體索引
+      if (selectedRoute) {
+        const variantIndex = selectedRoute.variants?.findIndex(v => v.route_id.toString() === selectedRoute.serviceType) ?? 0;
+        const etaData = await getMinibusEta(stopId, routeId, variantIndex, activeDirection);
+        setEtas(prev => ({ ...prev, [stopId]: etaData }));
+      }
     } catch (e) {
       console.error(`無法載入站點 ${stopId} 的ETA:`, e);
       setEtas(prev => ({ ...prev, [stopId]: [] }));
     } finally {
       setLoading(prev => ({ ...prev, eta: '' }));
     }
-  }, [loading.eta]);
+  }, [loading.eta, selectedRoute, activeDirection]);
 
   // Filter and sort routes based on search term and selected region
   const filteredRoutes = useMemo(() => {
@@ -169,13 +174,53 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
               {selectedRoute.routeNo}
             </div>
             <div className="overflow-hidden flex-grow min-w-0">
-              <p className="text-gray-900 dark:text-white font-bold text-base sm:text-lg truncate hidden">{selectedRoute.orig_tc}</p>
-              <p className="text-gray-400 dark:text-gray-500 text-xs sm:text-sm font-medium my-0.5 hidden">→</p>
-              <p className="text-gray-600 dark:text-gray-300 font-semibold text-sm sm:text-base truncate hidden">{selectedRoute.dest_tc}</p>
+              <p className="text-gray-900 dark:text-white font-bold text-base sm:text-lg truncate">{selectedRoute.orig_tc}</p>
+              <p className="text-gray-400 dark:text-gray-500 text-xs sm:text-sm font-medium my-0.5">→</p>
+              <p className="text-gray-600 dark:text-gray-300 font-semibold text-sm sm:text-base truncate">{selectedRoute.dest_tc}</p>
+              {selectedRoute.variants && selectedRoute.variants.length > 1 && (
+                <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                  {selectedRoute.variants.length} 個變體
+                </p>
+              )}
             </div>
           </div>
         </div>
 
+        {/* 變體和方向選擇器 */}
+        {selectedRoute?.variants && selectedRoute.variants.length > 1 && (
+          <div className="sticky top-[64px] bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md py-3 z-10 -mx-4 px-4 flex-shrink-0 border-y border-gray-200 dark:border-gray-800">
+            <div className="bg-gray-200 dark:bg-gray-700/50 rounded-xl p-1">
+              <div className="flex bg-gray-200 dark:bg-gray-700/50 rounded-xl p-1 overflow-x-auto scrollbar-hide">
+                {selectedRoute.variants.map((variant, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      // 更新選定的變體
+                      const updatedRoute = {
+                        ...selectedRoute,
+                        directions: variant.directions,
+                        orig_tc: variant.directions[0]?.orig_tc || selectedRoute.orig_tc,
+                        dest_tc: variant.directions[0]?.dest_tc || selectedRoute.dest_tc,
+                        serviceType: variant.route_id.toString()
+                      };
+                      setSelectedRoute(updatedRoute);
+                      setActiveDirection(0);
+                      handleSelectRoute(updatedRoute);
+                    }}
+                    className={`flex-1 min-w-[120px] sm:min-w-[150px] p-2.5 rounded-lg font-semibold text-center transition-all text-sm whitespace-nowrap ${
+                      selectedRoute.serviceType === variant.route_id.toString()
+                        ? 'bg-white dark:bg-gray-800 text-teal-600 dark:text-[color:var(--accent)] shadow-md'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'
+                    }`}
+                  >
+                    {variant.description_tc || `變體 ${index + 1}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* 方向選擇器 */}
         {selectedRoute?.directions && selectedRoute.directions.length > 1 && (
           <div className="sticky top-[64px] bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-md py-3 z-10 -mx-4 px-4 flex-shrink-0 border-y border-gray-200 dark:border-gray-800">
@@ -186,7 +231,13 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
                     key={index}
                     onClick={() => {
                       setActiveDirection(index);
-                      handleSelectRoute(selectedRoute);
+                      // 重新加載站點數據
+                      if (selectedRoute) {
+                        handleSelectRoute({
+                          ...selectedRoute,
+                          directions: selectedRoute.directions
+                        });
+                      }
                     }}
                     className={`flex-1 min-w-[120px] sm:min-w-[150px] p-2.5 rounded-lg font-semibold text-center transition-all text-sm whitespace-nowrap ${
                       activeDirection === index
