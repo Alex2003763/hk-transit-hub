@@ -150,13 +150,14 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
         {/* 路線資訊卡 */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 animate-fade-in">
           <div className="flex items-center">
-            <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-16 h-12 text-xl mr-3 sm:mr-4 flex items-center justify-center">
-              {selectedRoute.routeNo}
+            <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-20 h-12 text-xl mr-4 flex-shrink-0 flex flex-col items-center justify-center">
+              <span className="text-base">{selectedRoute.routeNo}</span>
+              <span className="text-xs opacity-80">({selectedRoute.region_tc})</span>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-gray-900 dark:text-white font-bold text-lg truncate">{selectedRoute.orig_tc}</p>
-              <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">→</p>
-              <p className="text-gray-600 dark:text-gray-300 font-semibold text-base truncate">{selectedRoute.dest_tc}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-gray-900 dark:text-white font-bold text-xl leading-tight truncate" title={selectedRoute.orig_tc}>
+                {selectedRoute.orig_tc}
+              </p>
             </div>
           </div>
         </div>

@@ -76,18 +76,15 @@ const MinibusRouteSearch: React.FC<MinibusRouteSearchProps> = ({
                 <div className="text-green-600 dark:text-green-500 group-hover:text-[color:var(--accent)] transition-colors">
                   <MinibusIcon className="w-10 h-10" />
                 </div>
-                <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-14 h-10 flex items-center justify-center text-lg group-hover:bg-[color:var(--accent)] transition-colors">
-                  {route.routeNo}
+                <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg w-20 h-10 flex flex-col items-center justify-center text-lg group-hover:bg-[color:var(--accent)] transition-colors">
+                  <span className="text-sm">{route.routeNo}</span>
+                  <span className="text-xs opacity-80">({route.region_tc})</span>
                 </div>
               </div>
               <div className="overflow-hidden flex-1">
                 <div>
                   <div className="font-semibold text-gray-900 dark:text-white text-base truncate">
                     {route.orig_tc}
-                  </div>
-                  <div className="text-gray-500 dark:text-gray-400 text-sm flex items-center gap-1">
-                    <span>往</span>
-                    <span className="truncate">{route.dest_tc}</span>
                   </div>
                   {route.directions && route.directions[0]?.headways && (
                     <div className="mt-1 text-sm">
