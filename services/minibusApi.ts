@@ -1,152 +1,149 @@
 import { cacheManager, CACHE_CONFIGS } from './cacheManager';
+import { MinibusRoute, MinibusStop, MinibusEta } from '../types';
 
 const MINIBUS_API_BASE = '/api/minibus';
 const REGIONS = ['HKI', 'KLN', 'NT']; // 香港島、九龍、新界
 
-interface MinibusRoute {
-  routeId: string;
-  routeNo: string;
-  orig_tc: string;
-  orig_en: string;
-  dest_tc: string;
-  dest_en: string;
-  serviceType: string;
-}
-
-interface MinibusStop {
-  stopId: string;
-  name_tc: string;
-  name_en: string;
-  lat: number;
-  lng: number;
-}
-
-interface MinibusEta {
-  eta: string;
-  remark_tc: string;
-  remark_en: string;
-}
-
 const MINIBUS_CACHE_KEYS = {
   ROUTES: 'minibus_routes',
+  ROUTE_DETAILS: (routeId: string) => `minibus_route_details_${routeId}`,
   STOPS: (routeId: string) => `minibus_stops_${routeId}`,
   ETA: (stopId: string, routeId: string) => `minibus_eta_${stopId}_${routeId}`
 };
 
+async function fetchMinibusApi<T>(
+  endpoint: string,
+  cacheKey: string,
+  cacheConfig?: { maxAge: number; maxSize?: number }
+): Promise<T> {
+  const cachedData = cacheManager.get<T>(cacheKey);
+  if (cachedData) {
+    return cachedData;
+  }
+
+  try {
+    const response = await fetch(`${MINIBUS_API_BASE}${endpoint}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+
+    if (cacheConfig) {
+      cacheManager.set(cacheKey, data.data, cacheConfig);
+    }
+
+    return data.data;
+  } catch (error) {
+    console.error(`Failed to fetch ${endpoint}:`, error);
+    throw error;
+  }
+}
+
 export const getMinibusRoutes = async (): Promise<MinibusRoute[]> => {
-  // 先尝试从缓存获取
   const cached = cacheManager.get<MinibusRoute[]>(MINIBUS_CACHE_KEYS.ROUTES);
   if (cached) return cached;
-  
-  // 缓存未命中则获取数据
+
   const allRoutes: MinibusRoute[] = [];
-  
   for (const region of REGIONS) {
     try {
-      const response = await fetch(`${MINIBUS_API_BASE}/route/${region}`, {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-      const data = await response.json();
+      const endpoint = `/route/${region}`;
+      const data = await fetchMinibusApi<{ routes: string[] }>(endpoint, `minibus_routes_${region}`, CACHE_CONFIGS.ROUTES);
       
-      const routes = data.data.routes.map((routeCode: string) => ({
-        routeId: `${region}_${routeCode}`, // Create a unique ID
+      const routes = data.routes.map((routeCode: string) => ({
+        routeId: `${region}_${routeCode}`,
         routeNo: routeCode,
-        orig_tc: '', // Will be fetched in getMinibusStops
+        orig_tc: '',
         orig_en: '',
         dest_tc: '',
         dest_en: '',
-        serviceType: '' // Will be fetched in getMinibusStops
+        serviceType: ''
       }));
-      
       allRoutes.push(...routes);
     } catch (error) {
       console.error(`Failed to fetch minibus routes for region ${region}:`, error);
     }
   }
-  
-  // 设置缓存
-  cacheManager.set(
-    MINIBUS_CACHE_KEYS.ROUTES,
-    allRoutes,
-    { maxAge: 24 * 60 * 60 * 1000 } // 缓存24小时
-  );
-  
+
+  cacheManager.set(MINIBUS_CACHE_KEYS.ROUTES, allRoutes, CACHE_CONFIGS.ROUTES);
   return allRoutes;
 };
+
+// Helper to get route details which are needed for stops and ETA
+interface RouteDetailResponse {
+    route_id: string;
+    directions: Array<{
+        route_seq: number;
+    }>;
+}
+
+const getRouteDetails = async (routeId: string): Promise<RouteDetailResponse[]> => {
+    const [region, routeCode] = routeId.split('_');
+    const cacheKey = MINIBUS_CACHE_KEYS.ROUTE_DETAILS(routeId);
+    
+    return fetchMinibusApi<RouteDetailResponse[]>(
+        `/route/${region}/${routeCode}`,
+        cacheKey,
+        CACHE_CONFIGS.ROUTE_STOPS
+    );
+};
+
 
 export const getMinibusStops = async (routeId: string): Promise<MinibusStop[]> => {
   const cacheKey = MINIBUS_CACHE_KEYS.STOPS(routeId);
   const cached = cacheManager.get<MinibusStop[]>(cacheKey);
   if (cached) return cached;
 
-  const [region, routeCode] = routeId.split('_');
   try {
-    // 1. 先獲取路線詳細信息以獲取 route_id 和 route_seq
-    const routeResponse = await fetch(`${MINIBUS_API_BASE}/route/${region}/${routeCode}`, {
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-    const routeData = await routeResponse.json();
-
-    if (!routeData?.data?.[0]?.route_id) {
-      console.error('Invalid route data structure:', routeData);
+    const routeDetails = await getRouteDetails(routeId);
+    if (!routeDetails?.[0]?.route_id) {
+      console.error('Invalid route data structure:', routeDetails);
       return [];
     }
 
-    const realRouteId = routeData.data[0].route_id;
-    const routeSeq = routeData.data[0].directions[0].route_seq;
+    const realRouteId = routeDetails[0].route_id;
+    const routeSeq = routeDetails[0].directions[0].route_seq;
 
-    // 2. 使用 route-stop API 獲取站點列表
-    const stopListResponse = await fetch(`${MINIBUS_API_BASE}/route-stop/${realRouteId}/${routeSeq}`, {
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-    const stopListData = await stopListResponse.json();
+    const stopListData = await fetchMinibusApi<{ route_stops: any[] }>(
+      `/route-stop/${realRouteId}/${routeSeq}`,
+      `minibus_route_stops_${realRouteId}_${routeSeq}`,
+      CACHE_CONFIGS.ROUTE_STOPS
+    );
 
-    if (!stopListData?.data?.route_stops || !Array.isArray(stopListData.data.route_stops)) {
+    if (!stopListData?.route_stops) {
       console.error('Invalid route-stop response:', stopListData);
       return [];
     }
 
-    // 3. 處理每個站點
-    const stops: MinibusStop[] = [];
-    for (const routeStop of stopListData.data.route_stops) {
+    const stopPromises = stopListData.route_stops.map(async (routeStop: any) => {
       try {
-        // 獲取站點詳細信息
-        const stopResponse = await fetch(`${MINIBUS_API_BASE}/stop/${routeStop.stop_id}`, {
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        const stopData = await stopResponse.json();
-
-        if (!stopData?.data?.coordinates?.wgs84) {
+        const stopData = await fetchMinibusApi<{ coordinates: any }>(
+          `/stop/${routeStop.stop_id}`,
+          `minibus_stop_details_${routeStop.stop_id}`,
+          CACHE_CONFIGS.STOPS
+        );
+        
+        if (!stopData?.coordinates?.wgs84) {
           console.warn('Invalid stop data structure:', stopData);
-          continue;
+          return null;
         }
 
-        stops.push({
+        return {
           stopId: routeStop.stop_id.toString(),
           name_tc: routeStop.name_tc || '未知站名',
           name_en: routeStop.name_en || 'Unknown Stop',
-          lat: parseFloat(stopData.data.coordinates.wgs84.latitude) || 0,
-          lng: parseFloat(stopData.data.coordinates.wgs84.longitude) || 0,
-        });
+          lat: parseFloat(stopData.coordinates.wgs84.latitude) || 0,
+          lng: parseFloat(stopData.coordinates.wgs84.longitude) || 0,
+        };
       } catch (error) {
         console.error(`Error fetching stop details for stop ${routeStop.stop_id}:`, error);
+        return null;
       }
-    }
+    });
 
-    if (stops.length === 0) {
-      console.warn(`No valid stops found for route ${routeId}`);
-    } else {
-      console.log(`Successfully processed ${stops.length} stops for route ${routeId}`);
-    }
-
+    const stops = (await Promise.all(stopPromises)).filter((s): s is MinibusStop => s !== null);
+    
     cacheManager.set(cacheKey, stops, CACHE_CONFIGS.ROUTE_STOPS);
     return stops;
   } catch (error) {
@@ -160,36 +157,23 @@ export const getMinibusEta = async (stopId: string, routeId: string): Promise<Mi
   const cached = cacheManager.get<MinibusEta[]>(cacheKey);
   if (cached) return cached;
 
-  const [region, routeCode] = routeId.split('_');
   try {
-    // 1. 首先獲取路線詳細信息
-    const routeResponse = await fetch(`${MINIBUS_API_BASE}/route/${region}/${routeCode}`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    const routeData = await routeResponse.json();
-
-    if (!routeData?.data?.[0]?.route_id) {
-      console.error('Invalid route data structure:', routeData);
+    const routeDetails = await getRouteDetails(routeId);
+    if (!routeDetails?.[0]?.route_id) {
+      console.error('Invalid route data structure:', routeDetails);
       return [];
     }
+    
+    const realRouteId = routeDetails[0].route_id;
+    const routeSeq = routeDetails[0].directions[0].route_seq;
 
-    const realRouteId = routeData.data[0].route_id;
-    const routeSeq = routeData.data[0].directions[0].route_seq;
-
-    // 2. 獲取站點序號
-    const stopListResponse = await fetch(
-      `${MINIBUS_API_BASE}/route-stop/${realRouteId}/${routeSeq}`,
-      { headers: { 'Accept': 'application/json' } }
+    const stopListData = await fetchMinibusApi<{ route_stops: any[] }>(
+      `/route-stop/${realRouteId}/${routeSeq}`,
+      `minibus_route_stops_${realRouteId}_${routeSeq}`,
+      CACHE_CONFIGS.ROUTE_STOPS
     );
-    const stopListData = await stopListResponse.json();
 
-    if (!stopListData?.data?.route_stops) {
-      console.error('Invalid route-stop response:', stopListData);
-      return [];
-    }
-
-    // 查找指定站點的序號
-    const stopInfo = stopListData.data.route_stops.find(
+    const stopInfo = stopListData.route_stops.find(
       (stop: any) => stop.stop_id.toString() === stopId
     );
 
@@ -198,19 +182,18 @@ export const getMinibusEta = async (stopId: string, routeId: string): Promise<Mi
       return [];
     }
 
-    // 3. 使用正確的端點獲取到站時間
-    const etaResponse = await fetch(
-      `${MINIBUS_API_BASE}/eta/route-stop/${realRouteId}/${routeSeq}/${stopInfo.stop_seq}`,
-      { headers: { 'Accept': 'application/json' } }
+    const etaData = await fetchMinibusApi<{ enabled: boolean; eta: any[] }>(
+      `/eta/route-stop/${realRouteId}/${routeSeq}/${stopInfo.stop_seq}`,
+      `minibus_eta_${realRouteId}_${routeSeq}_${stopInfo.stop_seq}`,
+      CACHE_CONFIGS.ETA
     );
-    const etaData = await etaResponse.json();
 
-    if (!etaData?.data?.enabled) {
+    if (!etaData?.enabled) {
       console.warn('ETA service not enabled for this stop');
       return [];
     }
 
-    const etas: MinibusEta[] = (etaData.data.eta || []).map((etaItem: any) => ({
+    const etas: MinibusEta[] = (etaData.eta || []).map((etaItem: any) => ({
       eta: etaItem.timestamp,
       remark_tc: etaItem.remarks_tc || '',
       remark_en: etaItem.remarks_en || ''
@@ -225,6 +208,5 @@ export const getMinibusEta = async (stopId: string, routeId: string): Promise<Mi
 };
 
 export const preloadMinibusData = async () => {
-  // 预加载关键小巴数据
   await getMinibusRoutes();
 };
