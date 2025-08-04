@@ -39,37 +39,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ currentApiKey, onSaveApiK
       <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight">Settings</h2>
       
       <div className="space-y-3">
-        <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-3">API Configuration</h3>
-        <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg space-y-4">
-             <div>
-                <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Gemini API Key
-                </label>
-                <input
-                    id="api-key-input"
-                    type="password"
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    placeholder="Enter your Gemini API Key"
-                    className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-all"
-                />
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 text-xs">
-                Your API key is stored only in your browser's local storage and is never sent to any server besides Google's.
-            </p>
-            <div className="flex items-center gap-4 pt-2">
-                <button
-                    onClick={handleSave}
-                    className="bg-[color:var(--accent)] text-[color:var(--accent-text)] font-bold py-2 px-5 rounded-lg transition-all duration-300 hover:bg-[color:var(--accent-hover)] shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                >
-                    Save Key
-                </button>
-                {saved && <p className="text-green-600 dark:text-green-400 text-sm font-semibold animate-fade-in">✓ Saved!</p>}
-            </div>
-        </div>
-      </div>
-
-      <div className="space-y-3">
         <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-3">Appearance</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">

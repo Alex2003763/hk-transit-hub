@@ -7,10 +7,40 @@ interface StopEtaDisplayProps {
   refreshInterval?: number; // 刷新间隔（毫秒），可选，默认30000
 }
 
+const isSameDay = (date1: Date, date2: Date): boolean => {
+  return date1.getFullYear() === date2.getFullYear() &&
+         date1.getMonth() === date2.getMonth() &&
+         date1.getDate() === date2.getDate();
+};
+
 const calculateMinutesUntil = (etaTimestamp: string | null): { diff: number; unit: string; isPast: boolean } | null => {
   if (!etaTimestamp) return null;
   const now = new Date();
   const etaTime = new Date(etaTimestamp);
+  
+  // Handle cross-day scenarios
+  if (!isSameDay(now, etaTime)) {
+    const diffMs = etaTime.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+    // 如果是过去的时间
+    if (diffDays < 0) {
+      return { diff: 0, unit: 'Expired', isPast: true };
+    }
+    // 如果是明天
+    else if (diffDays === 1) {
+      return { diff: 0, unit: 'Tomorrow', isPast: false };
+    }
+    // 如果是未来几天
+    else if (diffDays > 1 && diffDays <= 7) {
+      return { diff: 0, unit: `${diffDays} days`, isPast: false };
+    }
+    // 如果超过一周
+    else if (diffDays > 7) {
+      return { diff: 0, unit: 'Next week', isPast: false };
+    }
+  }
+  
   const diffMs = etaTime.getTime() - now.getTime();
   const diffMins = Math.round(diffMs / 60000);
   
@@ -20,19 +50,18 @@ const calculateMinutesUntil = (etaTimestamp: string | null): { diff: number; uni
   return { diff: diffMins, unit: 'min', isPast: false };
 };
 
-const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas }) => {
+const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas, onRefresh, refreshInterval }) => {
   // 自动刷新逻辑
   useEffect(() => {
     if (!etas || etas.length === 0) return;
     
+    const interval = refreshInterval || 30000; // 默认30秒刷新间隔
     const timer = setInterval(() => {
-      // 这里需要触发重新获取ETA的逻辑
-      // 由于没有直接的回调函数，暂时使用控制台日志
-      console.log("Auto-refreshing ETA data...");
-    }, 30000); // 每30秒刷新一次
+      onRefresh(); // 调用父组件传递的刷新函数
+    }, interval);
 
     return () => clearInterval(timer);
-  }, [etas]);
+  }, [etas, onRefresh, refreshInterval]);
 
   if (!etas || etas.length === 0) {
     return <div className="text-gray-500 dark:text-gray-400 py-6 text-center text-sm">No ETA information available. The service may have ended.</div>;

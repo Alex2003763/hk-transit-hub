@@ -80,6 +80,12 @@ export const SEO_TEMPLATES = {
     keywords: 'HK Transit Hub settings, app configuration, theme settings, API configuration'
   },
   
+  news: {
+    title: 'Traffic News - HK Transit Hub',
+    description: 'Latest traffic news and updates for Hong Kong. Stay informed about road conditions, accidents, and transport disruptions.',
+    keywords: 'Hong Kong traffic news, road conditions, transport updates, traffic alerts, HK road news'
+  },
+  
   routeDetails: (routeNumber: string, origin: string, destination: string) => ({
     title: `Route ${routeNumber}: ${origin} to ${destination} - HK Transit Hub`,
     description: `View real-time ETAs, stops, and route map for KMB bus route ${routeNumber} from ${origin} to ${destination}. Plan your Hong Kong bus journey efficiently.`,

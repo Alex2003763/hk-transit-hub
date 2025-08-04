@@ -15,14 +15,15 @@ interface StopListItemProps {
   stop: RouteStop;
   stopInfo?: StopInfo;
   etas: Eta[];
-  onFetchEta: () => void;
+  route: Route;
+  onFetchEta: (stopId: string, route: string, serviceType: string) => void;
   isLoadingEta: boolean;
   isActive: boolean;
   onToggle: () => void;
 }
 
 const StopListItem: React.FC<StopListItemProps & { ref: React.Ref<HTMLLIElement> }> = React.forwardRef<HTMLLIElement, StopListItemProps>(
-  ({ stop, stopInfo, etas, onFetchEta, isLoadingEta, isActive, onToggle }, ref) => {
+  ({ stop, stopInfo, etas, route, onFetchEta, isLoadingEta, isActive, onToggle }, ref) => {
 
   const stripParentheses = (text: string | undefined | null): string => {
     if (!text) return '';
@@ -31,7 +32,7 @@ const StopListItem: React.FC<StopListItemProps & { ref: React.Ref<HTMLLIElement>
   
   const handleToggle = () => {
     if (!isActive) {
-      onFetchEta();
+      onFetchEta(stop.stop, route.route, route.service_type);
     }
     onToggle();
   };
@@ -106,6 +107,7 @@ const StopList: React.FC<StopListProps> = ({ stops, stopInfos, route, etas, onFe
           stop={stop}
           stopInfo={stopInfos.get(stop.stop)}
           etas={etas[stop.stop] || []}
+          route={route}
           onFetchEta={() => onFetchEta(stop.stop, route.route, route.service_type)}
           isLoadingEta={loadingEtaStopId === stop.stop}
           isActive={activeStop === stop.stop}
@@ -131,6 +133,17 @@ interface RouteDetailsProps {
 const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, etas, onFetchEta, loadingDetails, loadingEtaStopId, theme }) => {
   const [direction, setDirection] = useState<Direction>('outbound');
   const [activeStop, setActiveStop] = useState<string | null>(null);
+  
+  // 全局自动刷新逻辑 - 每30秒刷新一次当前激活车站的ETA
+  useEffect(() => {
+    if (!activeStop) return;
+    
+    const refreshInterval = setInterval(() => {
+      onFetchEta(activeStop, route.route, route.service_type);
+    }, 30000);
+
+    return () => clearInterval(refreshInterval);
+  }, [activeStop, route, onFetchEta]);
 
   const stripParentheses = (text: string | undefined | null): string => {
     if (!text) return '';

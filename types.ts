@@ -85,57 +85,6 @@ export interface MtrScheduleResponse {
   data: MtrData;
 }
 
-// AI Trip Planner Types
-export interface WalkDetails {
-  instruction: string;
-}
-
-export interface BusDetails {
-  route: string;
-  boarding_stop: string;
-  alighting_stop: string;
-  num_stops: number;
-}
-
-export interface MtrDetails {
-  line: string;
-  boarding_station: string;
-  alighting_station: string;
-  direction: string;
-  num_stops: number;
-}
-
-export type StepDetails = WalkDetails | BusDetails | MtrDetails | MinibusDetails;
-
-export interface TripStep {
-  type: 'walk' | 'bus' | 'mtr' | 'minibus';
-  details: StepDetails;
-  summary: string;
-  duration_minutes: number;
-  cost_hkd: number;
-}
-
-export interface TripPlan {
-  current_conditions?: string;
-  total_time_minutes: number;
-  total_cost_hkd: number;
-  plan: TripStep[];
-}
-
-export interface TripResult {
-  cheapest_plan: TripPlan;
-  fastest_plan: TripPlan;
-}
-
-export interface GroundingChunk {
-  web?: GroundingSource;
-}
-
-export interface GroundingSource {
-    uri?: string;
-    title?: string;
-}
-
 // Minibus Types
 export interface MinibusHeadway {
   weekdays: boolean[];
@@ -200,5 +149,5 @@ export interface MinibusDetails {
   is_gmb: boolean;
 }
 
-export type ActiveTab = 'planner' | 'kmb' | 'mtr' | 'settings' | 'minibus';
+export type ActiveTab = 'kmb' | 'mtr' | 'settings' | 'minibus' | 'news';
 export type Theme = 'light' | 'dark';

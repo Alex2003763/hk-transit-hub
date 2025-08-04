@@ -3,10 +3,6 @@
  * Provides accurate, reliable location detection with progressive fallback strategies
  */
 
-import { locationCache } from './locationCache';
-import { reverseGeocodingService, ReverseGeocodingOptions } from './reverseGeocodingService';
-import { networkService } from './networkService';
-
 export interface LocationCoordinates {
   lat: number;
   lng: number;
@@ -35,7 +31,6 @@ export interface GeolocationOptions {
   useCache?: boolean;
   requireUserInteraction?: boolean;
   enableReverseGeocoding?: boolean;
-  geocodingOptions?: ReverseGeocodingOptions;
 }
 
 interface CachedLocation {

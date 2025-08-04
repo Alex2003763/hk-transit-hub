@@ -189,7 +189,7 @@ export default defineConfig(({ mode }) => {
             headers: {
               'User-Agent': 'HK-Transit-Hub/1.0'
             }
-          }
+          },
         }
       }
     };

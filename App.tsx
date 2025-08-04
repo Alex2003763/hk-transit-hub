@@ -23,9 +23,10 @@ import { updatePageSEO, SEO_TEMPLATES } from './utils/seo';
 // Lazy load heavy components
 const RouteDetails = React.lazy(() => import('./components/RouteDetails'));
 const MtrPanel = React.lazy(() => import('./components/MtrPanel'));
-const TripPlannerPanel = React.lazy(() => import('./components/TripPlannerPanel'));
 const SettingsPanel = React.lazy(() => import('./components/SettingsPanel'));
 const MinibusPanel = React.lazy(() => import('./components/MinibusPanel'));
+import WeatherAndNewsTabs from './components/WeatherAndNewsTabs';
+const NewsPanel = React.lazy(() => import('./components/NewsPanel'));
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import SafariInstallPrompt from './components/SafariInstallPrompt';
@@ -36,7 +37,6 @@ export type Location = { name_tc: string; name_en: string; };
 
 function App() {
   // KMB State
-  const [rawRoutes, setRawRoutes] = useState<Route[]>([]); // For AI
   const [allRoutes, setAllRoutes] = useState<Route[]>([]); // For KMB tab display
   const [allStops, setAllStops] = useState<Map<string, StopInfo>>(new Map());
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,7 +45,7 @@ function App() {
   const [etas, setEtas] = useState<Record<string, Eta[]>>({});
   
   // App-wide state
-  const [activeTab, setActiveTab] = useState<ActiveTab>('planner');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('news');
   const [minibusRoutes, setMinibusRoutes] = useState<MinibusRoute[]>([]);
   const [minibusStops, setMinibusStops] = useState<Map<string, MinibusStop>>(new Map());
   const [selectedMinibusRoute, setSelectedMinibusRoute] = useState<MinibusRoute | null>(null);
@@ -174,7 +174,6 @@ function App() {
 
         const [routesRes, stopsRes] = await Promise.all([getRouteList(), getAllStops()]);
 
-        setRawRoutes(routesRes); // Keep all routes for AI context
 
         const uniqueRoutes = new Map<string, Route>();
         routesRes.forEach(route => {
@@ -276,29 +275,6 @@ function App() {
     );
   }, [searchTerm, allRoutes]);
 
-  const locations = useMemo((): Location[] => {
-    const locationMap = new Map<string, Location>();
-
-    // Add all bus stops
-    for (const stop of allStops.values()) {
-        if (stop.name_tc && !locationMap.has(stop.name_tc)) {
-            locationMap.set(stop.name_tc, { name_tc: stop.name_tc, name_en: stop.name_en });
-        }
-    }
-
-    // Add all MTR stations
-    for (const line of Object.values(mtrStations)) {
-        for (const station of line) {
-             if (station.name_tc && !locationMap.has(station.name_tc)) {
-                locationMap.set(station.name_tc, { name_tc: station.name_tc, name_en: station.name_en });
-            }
-        }
-    }
-    
-    // Convert map to array and sort
-    return Array.from(locationMap.values()).sort((a, b) => a.name_tc.localeCompare(b.name_tc, 'zh-HK'));
-  }, [allStops]);
-
   const renderKmbContent = () => {
      if (loading.initial) return <Loader message="Loading bus data..." />;
      if (error && !loading.initial) return <ErrorDisplay message={error} />;
@@ -332,9 +308,6 @@ function App() {
   // Update SEO when tab changes
   useEffect(() => {
     switch(activeTab) {
-      case 'planner':
-        updatePageSEO(SEO_TEMPLATES.planner);
-        break;
       case 'kmb':
         if (!selectedRoute) {
           updatePageSEO(SEO_TEMPLATES.kmb);
@@ -346,6 +319,9 @@ function App() {
       case 'settings':
         updatePageSEO(SEO_TEMPLATES.settings);
         break;
+      case 'news':
+        updatePageSEO(SEO_TEMPLATES.news);
+        break;
       default:
         updatePageSEO(SEO_TEMPLATES.home);
     }
@@ -353,12 +329,6 @@ function App() {
 
   const renderContent = () => {
     switch(activeTab) {
-      case 'planner':
-        return (
-          <Suspense fallback={<Loader message="Loading trip planner..." />}>
-            <TripPlannerPanel allRoutes={rawRoutes} locations={locations} apiKey={apiKey} />
-          </Suspense>
-        );
       case 'kmb':
         return renderKmbContent();
       case 'mtr':
@@ -385,8 +355,18 @@ function App() {
             <SettingsPanel currentApiKey={apiKey} onSaveApiKey={handleSaveApiKey} theme={theme} setTheme={setTheme} />
           </Suspense>
         );
+      case 'news':
+        return (
+          <Suspense fallback={<Loader message="Loading news and weather..." />}>
+            <WeatherAndNewsTabs />
+          </Suspense>
+        );
       default:
-        return null;
+        return (
+          <Suspense fallback={<Loader message="Loading news..." />}>
+            <NewsPanel />
+          </Suspense>
+        );
     }
   }
 
