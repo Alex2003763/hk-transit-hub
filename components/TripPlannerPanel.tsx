@@ -19,6 +19,7 @@ const TripPlannerPanel: React.FC<TripPlannerPanelProps> = ({ allRoutes, location
     const [plan, setPlan] = useState<TripResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [rawResponse, setRawResponse] = useState<string | null>(null);
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
 
@@ -114,36 +115,27 @@ const TripPlannerPanel: React.FC<TripPlannerPanelProps> = ({ allRoutes, location
 
     const promptContext = useMemo(() => {
         return `
+//-- ABSOLUTE RULE: Your entire response MUST be a single, valid JSON object. --//
+//-- Do NOT include any text, conversation, or explanation outside of the JSON. --//
+//-- Your response must start with { and end with }. No markdown. --//
+
 You are an expert Hong Kong transportation planner. Your goal is to generate two distinct trip plans: the absolute CHEAPEST and the absolute FASTEST.
 
 **//-- Core Task & Rules --//**
 1.  **Generate Two Plans:** Create two separate, complete trip plans: one focused on the lowest cost (cheapest_plan), and one on the minimum time (fastest_plan).
-2.  **Use Your Knowledge & Google Search:** You have built-in knowledge of Hong Kong's MTR, buses, minibuses, etc. You MUST use Google Search to find real-time data:
+2.  **Use Your Knowledge & Google Search:** You have built-in knowledge of Hong Kong's MTR, buses, minibuses, etc. You MUST use Google Search to find real-time data for:
     -   **Fares:** Get exact Octopus card fares for MTR, bus and minibus routes.
     -   **Travel Times:** Use Google Maps for realistic time estimates (including walking).
     -   **Service Status:** Check for any transport disruptions or delays.
 3.  **Location Inference:** If a start/end point is a landmark (e.g., "K11 Musea"), find the nearest official MTR station, bus stop or minibus stop and use its exact name in Traditional Chinese.
 4.  **Language:** All summaries, instructions, and names in the plan must be in **Traditional Chinese**. The only exception is 'current_conditions', which should be in English.
 5.  **Minibus Integration Rules:**
-    -   **Green Minibuses (GMB):**
-        - 固定路線和站點，票價由政府規管
-        - 使用 "type": "gmb" 在行程段落
-        - 必須提供完整路線號碼（如：1M, 13）
-        - 必須提供準確的上車及下車站名稱
-    -   **Red Minibuses (RMB):**
-        - 較彈性的路線和站點，票價較高
-        - 使用 "type": "rmb" 在行程段落
-        - 提供大約行駛區域（如：旺角至尖沙咀）
-        - 預估車費需高於綠色小巴
-    -   **票價規則：**
-        - 綠色小巴：根據實際路線票價
-        - 紅色小巴：按區域距離估算，通常比綠巴貴20-50%
+    -   **Green Minibuses (GMB):** Use "type": "gmb". Must provide route number, boarding/alighting stops.
+    -   **Red Minibuses (RMB):** Use "type": "rmb". Provide approximate route (e.g., Mong Kok to TST). Estimated fare must be higher than GMB.
 
-**//-- CRITICAL: Output Format --//**
--   Your entire response MUST be a single, valid JSON object.
--   Do NOT include any text, conversation, or explanation outside of the JSON object.
--   Your response must start with \`{\` and end with \`}\`. No markdown \`\`\`json blocks.
--   The JSON structure must be exactly as follows:
+**//-- CRITICAL: JSON Output Format --//**
+Your entire response MUST be a single, valid JSON object, starting with { and ending with }.
+The JSON structure must be exactly as follows. Do NOT add extra fields.
 
 {
   "cheapest_plan": {
@@ -152,34 +144,18 @@ You are an expert Hong Kong transportation planner. Your goal is to generate two
     "total_cost_hkd": 12.5,
     "plan": [
       {
-        "type": "walk",
+        "type": "walk", // or "mtr", "bus", "gmb", "rmb"
         "summary": "步行到尖沙咀碼頭巴士總站",
-        "details": { "instruction": "從起點步行約5分鐘即可到達巴士總站。" },
+        "details": {
+          // For "walk":
+          "instruction": "從起點步行約5分鐘即可到達巴士總站。",
+          // For "mtr":
+          "line": "荃灣綫", "boarding_station": "尖沙咀", "alighting_station": "旺角", "direction": "往荃灣", "num_stops": 2,
+          // For "bus", "gmb", "rmb":
+          "route": "1M", "boarding_stop": "尖沙咀碼頭", "alighting_stop": "旺角街市", "num_stops": 5
+        },
         "duration_minutes": 5,
         "cost_hkd": 0
-      },
-      {
-        "type": "gmb",
-        "summary": "乘搭1M專線小巴",
-        "details": {
-          "route": "1M",
-          "boarding_stop": "尖沙咀碼頭",
-          "alighting_stop": "旺角街市",
-          "num_stops": 5,
-          "is_gmb": true,
-          "route_zh": "尖沙咀碼頭至旺角",
-          "fare_type": "fixed",
-          "peak_hour_warning": false
-        },
-        "duration_minutes": 20,
-        "cost_hkd": 5.2
-      },
-      {
-        "type": "mtr",
-        "summary": "乘搭荃灣綫往荃灣",
-        "details": { "line": "荃灣綫", "boarding_station": "尖沙咀", "alighting_station": "旺角", "direction": "往荃灣", "num_stops": 2 },
-        "duration_minutes": 5,
-        "cost_hkd": 5.5
       }
     ]
   },
@@ -190,6 +166,8 @@ You are an expert Hong Kong transportation planner. Your goal is to generate two
     "plan": [ /* similar structure to cheapest_plan */ ]
   }
 }
+
+//-- FINAL REMINDER: Only a single, valid JSON object is allowed. No extra text. --//
 `;
     }, []);
 
@@ -199,6 +177,7 @@ You are an expert Hong Kong transportation planner. Your goal is to generate two
         setLoading(true);
         setError(null);
         setPlan(null);
+        setRawResponse(null);
 
         try {
             if (!apiKey) {
@@ -219,10 +198,10 @@ You are an expert Hong Kong transportation planner. Your goal is to generate two
                     googleSearch: {}
                 }],
                 generationConfig: {
-                    temperature: 0.2, // Lower temperature for more predictable, structured output
+                    temperature: 0, // Lower temperature for more predictable, structured output
                     topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 4096,
+                    topP: 0.1,
+                    maxOutputTokens: 10000,
                 }
             };
 
@@ -263,6 +242,7 @@ You are an expert Hong Kong transportation planner. Your goal is to generate two
             } catch (e) {
                 console.error("Failed to parse JSON from response", e);
                 console.log("Raw response:", textResponse);
+                setRawResponse(textResponse);
                 throw new Error("Sorry, I couldn't generate a trip plan. The AI returned a response that was not in the expected JSON format.");
             }
 
@@ -367,8 +347,8 @@ You are an expert Hong Kong transportation planner. Your goal is to generate two
                 </div>
             )}
             {loading && <div className="py-8"><Loader message="Planning your trip..." /></div>}
-            {error && <ErrorDisplay message={error} />}
-            {plan && <TripPlanResult plan={plan} />}
+            {error && <ErrorDisplay message={error} rawResponse={rawResponse} />}
+            {plan && !error && <TripPlanResult plan={plan} />}
             {!plan && !loading && !error && apiKey && (
                  <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                     <p className="font-semibold">Where are you headed?</p>
