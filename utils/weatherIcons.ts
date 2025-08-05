@@ -9,6 +9,6 @@ export const getWeatherIcon = (icons: number[]): string => {
     return '';
   }
   // The API may provide multiple icons, we'll use the first one.
-  const iconNumber = icons;
+  const iconNumber = icons[0];
   return `https://www.hko.gov.hk/images/wxicon/pic${iconNumber}.png`;
 };

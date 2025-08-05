@@ -7,6 +7,7 @@ const WeatherAndNewsTabs: React.FC = () => {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
+      <div className="mt-6"></div>
       <div className="bg-gray-100 dark:bg-gray-800 rounded-t-lg p-1 flex space-x-1">
         <button
           className={`w-full py-2.5 text-sm font-medium leading-5 rounded-lg

@@ -171,15 +171,15 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, et
 
   return (
     <div className="flex flex-col gap-4 flex-grow pt-4">
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 animate-fade-in">
+      <div className="bg-gradient-to-br from-teal-50 via-white to-teal-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 sm:p-6 rounded-3xl shadow-2xl border border-teal-200 dark:border-teal-700 flex-shrink-0 animate-fade-in transition-all duration-300">
         <div className="flex items-center gap-4">
           <div className="bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800 font-bold rounded-lg w-16 h-12 text-xl mr-3 sm:mr-4 flex items-center justify-center">
             {route.route}
           </div>
           <div className="overflow-hidden">
-             <p className="text-gray-900 dark:text-white font-bold text-lg truncate">{stripParentheses(route.orig_tc)}</p>
+             <p className="text-gray-900 dark:text-white font-extrabold text-lg sm:text-xl truncate">{stripParentheses(route.orig_tc)}</p>
              <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">→</p>
-             <p className="text-gray-600 dark:text-gray-300 font-semibold text-base truncate">{stripParentheses(route.dest_tc)}</p>
+             <p className="text-gray-600 dark:text-gray-300 font-semibold text-base sm:text-lg truncate">{stripParentheses(route.dest_tc)}</p>
           </div>
         </div>
       </div>
@@ -212,7 +212,7 @@ const RouteDetails: React.FC<RouteDetailsProps> = ({ route, stops, stopInfos, et
       {loadingDetails ? (
         <Loader message="Loading route stops..." />
       ) : (
-        <div className="flex flex-col flex-grow min-h-0 border border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden animate-fade-in">
+        <div className="flex flex-col flex-grow min-h-0 border border-teal-100 dark:border-teal-700/50 bg-gradient-to-br from-white via-teal-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-fade-in transition-all duration-300">
             <div className="h-[250px] md:h-[300px] flex-shrink-0">
                 <ErrorBoundary fallback={<MapSkeleton className="h-full w-full" />}>
                   <Suspense fallback={<MapSkeleton className="h-full w-full" />}>

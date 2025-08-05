@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Loader from './Loader';
 import ErrorDisplay from './ErrorDisplay';
 import { geolocationService, LocationCoordinates } from '../services/geolocationService';
-import { getWeatherIcon } from '../utils/weatherIcons.js';
+import { getWeatherIcon } from '../utils/weatherIcons';
 
 interface WeatherWarning {
   contents: string[];
@@ -36,8 +36,20 @@ const WeatherDisplay: React.FC = () => {
   const [userLocation, setUserLocation] = useState<LocationCoordinates | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedStation, setSelectedStation] = useState<string>('closest');
+  const [expandedWarning, setExpandedWarning] = useState<number | null>(null);
+
+  // 動態背景色判斷
+  const getWeatherBgClass = (iconNum?: number) => {
+    if (!iconNum) return "from-blue-100 to-blue-200 dark:from-gray-800 dark:to-gray-900";
+    if ([50, 51, 52, 53, 54].includes(iconNum)) return "from-yellow-200 to-yellow-400 dark:from-yellow-900 dark:to-yellow-700"; // 晴
+    if ([60, 61, 62, 63, 64].includes(iconNum)) return "from-gray-300 to-gray-500 dark:from-gray-900 dark:to-gray-700"; // 多雲
+    if ([70, 71, 72, 73, 74, 75].includes(iconNum)) return "from-blue-300 to-blue-600 dark:from-blue-900 dark:to-blue-700"; // 雨
+    if ([80, 81, 82].includes(iconNum)) return "from-purple-300 to-purple-600 dark:from-purple-900 dark:to-purple-700"; // 雷暴
+    return "from-blue-100 to-blue-200 dark:from-gray-800 dark:to-gray-900";
+  };
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
     const fetchWeatherData = async () => {
       try {
         setLoading(true);
@@ -85,12 +97,18 @@ const WeatherDisplay: React.FC = () => {
         setUserLocation(location.coordinates);
       } catch (err) {
         console.error("Error getting user location:", err);
-        
       }
     };
 
     fetchWeatherData();
     fetchUserLocation();
+
+    // 自動刷新，每 5 分鐘
+    intervalId = setInterval(fetchWeatherData, 300000);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   const findClosestStation = (): TemperatureData | null => {
@@ -164,37 +182,57 @@ const WeatherDisplay: React.FC = () => {
     : weather.temperatures.find(t => t.place === selectedStation);
 
   return (
-    <div className="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-gray-800 dark:to-gray-900 p-4 rounded-xl shadow-lg mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-          {selectedStation === 'closest'
-            ? (closestStation ? `您附近 (${closestStation.place}) 的天氣` : '香港天氣')
-            : `${selectedStation} 的天氣`}
-        </h3>
-        <div className="relative">
-          <select
-            value={selectedStation}
-            onChange={(e) => setSelectedStation(e.target.value)}
-            className="text-sm bg-white dark:bg-gray-700 rounded-lg py-2 pl-3 pr-8 appearance-none border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-          >
-            <option value="closest">最接近</option>
-            {weather.temperatures.map(t => (
-              <option key={t.place} value={t.place}>{t.place}</option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-            <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+    <div
+      className={`bg-gradient-to-br ${getWeatherBgClass(weather?.icon?.[0])} p-6 sm:p-8 rounded-3xl shadow-2xl mb-8 border border-teal-200 dark:border-teal-700 transition-all duration-300 backdrop-blur-xl hover:shadow-3xl hover:scale-[1.01] hover:border-teal-400 dark:hover:border-teal-400`}
+      role="region"
+      aria-label="天氣資訊"
+      tabIndex={0}
+    >
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+        <div className="flex items-center gap-4">
+          {weather.icon.length > 0 && (
+            <img
+              src={getWeatherIcon(weather.icon)}
+              alt="天氣圖示"
+              aria-label="天氣圖示"
+              className="w-16 h-16 md:w-20 md:h-20 animate-float"
+              style={{ animation: 'float 2.5s ease-in-out infinite' }}
+            />
+          )}
+          <div>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800 dark:text-white">
+              {selectedStation === 'closest'
+                ? (closestStation ? `您附近 (${closestStation.place}) 的天氣` : '香港天氣')
+                : `${selectedStation} 的天氣`}
+            </h3>
+            {/* 天氣描述（如晴、雨） */}
+            <p className="text-lg text-gray-600 dark:text-gray-300 mt-1">
+              {weather.warningMessages.length > 0
+                ? weather.warningMessages[0]
+                : '天氣良好'}
+            </p>
           </div>
         </div>
-        {weather.icon.length > 0 && (
-          <img
-            src={getWeatherIcon(weather.icon)}
-            alt="Weather Icon"
-            className="w-12 h-12"
-          />
-        )}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <select
+              value={selectedStation}
+              onChange={(e) => setSelectedStation(e.target.value)}
+              className="text-sm bg-white dark:bg-gray-700 rounded-lg py-2 pl-3 pr-8 appearance-none border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            >
+              <option value="closest">最接近</option>
+              {weather.temperatures.map(t => (
+                <option key={t.place} value={t.place}>{t.place}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+          {/* 即時更新按鈕已移除 */}
+        </div>
       </div>
 
       {locationError && !userLocation && (
@@ -209,77 +247,99 @@ const WeatherDisplay: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mt-2">
         {displayTemperature && (
-          <div className="bg-white/60 dark:bg-gray-700/50 p-3 rounded-lg backdrop-blur-sm">
-            <p className="text-sm text-gray-600 dark:text-gray-400">溫度</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          <section className="bg-gradient-to-br from-teal-50/80 via-white/70 to-teal-100/80 dark:from-gray-900/80 dark:via-gray-800/70 dark:to-gray-900/80 p-4 sm:p-6 rounded-3xl shadow-2xl flex flex-col items-center border border-teal-100 dark:border-teal-700 transition-all duration-300 backdrop-blur-md hover:shadow-3xl hover:scale-105 hover:border-teal-400 dark:hover:border-teal-400" aria-label="溫度資訊">
+            <svg className="w-8 h-8 text-red-400 mb-2 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2a7 7 0 017 7c0 3.87-3.13 7-7 7s-7-3.13-7-7a7 7 0 017-7z" />
+            </svg>
+            <p className="text-base font-semibold text-gray-700 dark:text-gray-300">溫度</p>
+            <p className="text-3xl font-extrabold text-gray-900 dark:text-white drop-shadow">
               {displayTemperature.value}°<span className="text-lg">{displayTemperature.unit}</span>
             </p>
-          </div>
+          </section>
         )}
+        {/* 濕度卡片 */}
+        {weather.rainfall.length > 0 && (
+          <section className="bg-gradient-to-br from-teal-50/80 via-white/70 to-teal-100/80 dark:from-gray-900/80 dark:via-gray-800/70 dark:to-gray-900/80 p-4 sm:p-6 rounded-3xl shadow-2xl flex flex-col items-center border border-teal-100 dark:border-teal-700 transition-all duration-300 backdrop-blur-md hover:shadow-3xl hover:scale-105 hover:border-teal-400 dark:hover:border-teal-400" aria-label="降雨量資訊">
+            <svg className="w-8 h-8 text-blue-400 mb-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 13v-4a4 4 0 10-8 0v4a4 4 0 008 0z" />
+            </svg>
+            <p className="text-base font-semibold text-gray-700 dark:text-gray-300">降雨量</p>
+            <p className="text-2xl font-extrabold text-gray-900 dark:text-white drop-shadow">
+              {weather.rainfall[0].max} mm
+            </p>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{weather.rainfall[0].place}</span>
+          </section>
+        )}
+        {/* 其他可加濕度、風速等卡片 */}
       </div>
 
       {weather.warnings.length > 0 && (
-        <div className="mt-4">
-          <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">天氣警告</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mt-6">
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-4 text-lg">天氣警告</h4>
+          <div className="space-y-3">
             {weather.warnings.map((warning, index) => {
-              // 根據警告類型確定顏色
-              let bgColor = 'bg-red-100';
-              let borderColor = 'border-red-500';
-              let textColor = 'text-red-800';
-              let darkBgColor = 'dark:bg-red-900/50';
-              let darkTextColor = 'dark:text-red-200';
-              
-              if (warning.warningStatementCode.includes('雷暴')) {
-                bgColor = 'bg-yellow-100';
-                borderColor = 'border-yellow-500';
-                textColor = 'text-yellow-800';
-                darkBgColor = 'dark:bg-yellow-900/50';
-                darkTextColor = 'dark:text-yellow-200';
-              } else if (warning.warningStatementCode.includes('火災')) {
-                bgColor = 'bg-orange-100';
-                borderColor = 'border-orange-500';
-                textColor = 'text-orange-800';
-                darkBgColor = 'dark:bg-orange-900/50';
-                darkTextColor = 'dark:text-orange-200';
-              }
-              
+              const warningIconMap: Record<string, string> = {
+                WFIREY: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/firey.gif',
+                WFIRER: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/firer.gif',
+                WFROST: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/frost.gif',
+                WHOT: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/vhot.gif',
+                WCOLD: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/cold.gif',
+                WMSGNL: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/sms.gif',
+                WRAINA: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/raina.gif',
+                WRAINR: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/rainr.gif',
+                WRAINB: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/rainb.gif',
+                WFNTSA: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/ntfl.gif',
+                WL: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/landslip.gif',
+                TC1: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc1.gif',
+                TC3: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc3.gif',
+                TC8NE: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc8ne.gif',
+                TC8SE: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc8b.gif',
+                TC8NW: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc8d.gif',
+                TC8SW: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc8c.gif',
+                TC9: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc9.gif',
+                TC10: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tc10.gif',
+                WTMW: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/tsunami-warn.gif',
+                WTS: 'https://www.hko.gov.hk/tc/wxinfo/dailywx/images/ts.gif',
+              };
+              const subtype = (warning as any).subtype || warning.warningStatementCode;
+              const iconUrl = warningIconMap[subtype] || '';
+              const isExpanded = expandedWarning === index;
               return (
                 <div
                   key={index}
-                  className={`${bgColor} ${darkBgColor} border-l-4 ${borderColor} rounded-lg shadow-sm overflow-hidden`}
+                  className={`bg-yellow-50 dark:bg-yellow-900/40 border-l-4 border-yellow-400 rounded-xl shadow p-4 flex items-center transition-all duration-200 cursor-pointer hover:shadow-lg hover:bg-yellow-100/80 dark:hover:bg-yellow-900/60`}
+                  onClick={() => setExpandedWarning(isExpanded ? null : index)}
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
+                  aria-label={`天氣警告 ${index + 1}`}
                 >
-                  <div className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-5 w-5 ${textColor} ${darkTextColor} mr-2`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                          />
-                        </svg>
-                        <p className={`font-bold ${textColor} ${darkTextColor}`}>{warning.warningStatementCode}</p>
-                      </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        更新: {new Date(warning.updateTime).toLocaleTimeString('tc-HK', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <ul className="list-disc list-inside text-sm mt-2 ml-2">
-                      {warning.contents.map((content, i) => (
-                        <li key={i} className={`${textColor} ${darkTextColor}`}>{content}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  {iconUrl && (
+                    <img
+                      src={iconUrl}
+                      alt={subtype}
+                      className="w-8 h-8 mr-2"
+                    />
+                  )}
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
+                    {new Date(warning.updateTime).toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="text-sm text-gray-700 dark:text-gray-200 flex-1">
+                    {isExpanded
+                      ? warning.contents.map((c, i) => (
+                          <span key={i} className="block mb-1">{c}</span>
+                        ))
+                      : warning.contents.length > 0 ? warning.contents[0] : ''}
+                  </span>
+                  <svg
+                    className={`w-5 h-5 ml-2 text-yellow-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               );
             })}

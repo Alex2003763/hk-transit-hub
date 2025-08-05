@@ -1,3 +1,115 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 全局主題色板與字型 */
+:root {
+  --background-light: #f9fafb;
+  --text-light: #1f2937;
+  --text-secondary-light: #6b7280;
+  --card-light: #ffffff;
+  --border-light: #e5e7eb;
+
+  --background-dark: #111827;
+  --text-dark: #f3f4f6;
+  --text-secondary-dark: #9ca3af;
+  --card-dark: #1f2937;
+  --border-dark: #374151;
+
+  --accent: #00f5d4;
+  --accent-hover: #00d8b9;
+  --accent-text: #112244;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background-light);
+  color: var(--text-light);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.dark body {
+  background-color: var(--background-dark);
+  color: var(--text-dark);
+}
+
+/* 標題層次 */
+h1, .h1 { font-size: 2.25rem; font-weight: 800; margin-bottom: 1rem; }
+h2, .h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; }
+h3, .h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+h4, .h4 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
+h5, .h5 { font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; }
+h6, .h6 { font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; }
+
+/* 按鈕樣式 */
+.button, button {
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+
+/* 卡片樣式 */
+.card {
+  background: var(--card-light);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  border: 1px solid var(--border-light);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.dark .card {
+  background: var(--card-dark);
+  border: 1px solid var(--border-dark);
+}
+
+/* 表單樣式 */
+input, select, textarea {
+  font-family: inherit;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-light);
+  padding: 0.5rem 1rem;
+  background: var(--card-light);
+  color: var(--text-light);
+  transition: border 0.2s, background 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.dark input, .dark select, .dark textarea {
+  background: var(--card-dark);
+  color: var(--text-dark);
+  border: 1px solid var(--border-dark);
+}
+
+/* 響應式設計 */
+@media (max-width: 640px) {
+  h1, .h1 { font-size: 1.5rem; }
+  h2, .h2 { font-size: 1.25rem; }
+  .card { padding: 1rem; }
+  .button, button { padding: 0.5rem 1rem; }
+}
+
+/* 捲軸樣式 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+.dark ::-webkit-scrollbar-track { background: var(--background-dark); }
+.dark ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+html:not(.dark) ::-webkit-scrollbar-track { background: #f3f4f6; }
+html:not(.dark) ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* 動畫 */
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-in-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

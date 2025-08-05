@@ -17,7 +17,12 @@ const SafariInstallPrompt: React.FC<SafariInstallPromptProps> = ({ onDismiss, sh
               Add to Home Screen
             </h3>
             <p className="text-sm opacity-90 mt-1">
-              To install the app, tap the Share button and then 'Add to Home Screen'.
+              To install the app, tap the <b>Share</b> button (<svg className="inline w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{verticalAlign: 'middle'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12v.01M12 4v16m8-8v.01M16 8l-4-4-4 4" /></svg>)
+              and then <b>'Add to Home Screen'</b>.
+              <br />
+              <span className="block mt-2 text-yellow-300 font-semibold">
+                <b>Note:</b> Only after adding to Home Screen can you use the app offline on iPhone/Safari.
+              </span>
             </p>
             <div className="mt-3 flex">
               <button

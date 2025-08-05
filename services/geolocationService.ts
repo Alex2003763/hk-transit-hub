@@ -3,6 +3,8 @@
  * Provides accurate, reliable location detection with progressive fallback strategies
  */
 
+import { locationCache } from './locationCache';
+
 export interface LocationCoordinates {
   lat: number;
   lng: number;
@@ -231,17 +233,9 @@ class GeolocationService {
   private async generateDisplayName(
     coordinates: LocationCoordinates,
     enableReverseGeocoding: boolean = false,
-    geocodingOptions?: ReverseGeocodingOptions
+    // geocodingOptions?: any // 移除不存在型別
   ): Promise<string> {
-    if (enableReverseGeocoding) {
-      try {
-        const result = await reverseGeocodingService.reverseGeocode(coordinates, geocodingOptions);
-        return result.displayName;
-      } catch (error) {
-        console.warn('Reverse geocoding failed, using fallback:', error);
-      }
-    }
-
+    // 移除 reverseGeocodingService 相關程式碼
     const { lat, lng, accuracy } = coordinates;
     const accuracyText = accuracy ? ` (±${Math.round(accuracy)}m)` : '';
     return `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})${accuracyText}`;
@@ -331,9 +325,13 @@ class GeolocationService {
    * Attempt location detection with progressive fallback
    */
   private async attemptLocationWithFallback(options: GeolocationOptions): Promise<LocationResult> {
-    // Get network-aware recommendations
-    const networkOptions = networkService.getGeolocationOptions();
-    const isFastConnection = networkService.isFastConnection();
+    // 移除 networkService 相關程式碼
+    const networkOptions = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000,
+    };
+    const isFastConnection = true;
 
     // Detect mobile Safari which has known permission issues
     const isMobileSafari = navigator.userAgent.includes('Safari') &&
@@ -342,7 +340,7 @@ class GeolocationService {
 
     const strategies = [
       // Strategy 1: Conservative start for mobile Safari, high accuracy for others
-      ...(isFastConnection && !networkService.isDataSavingEnabled() && !isMobileSafari ? [{
+      ...(isFastConnection && !isMobileSafari ? [{
         enableHighAccuracy: true,
         timeout: Math.min(8000, networkOptions.timeout * 0.6),
         maximumAge: 60000,
@@ -413,7 +411,7 @@ class GeolocationService {
         const displayName = await this.generateDisplayName(
           coordinates,
           options.enableReverseGeocoding,
-          options.geocodingOptions
+          // options.geocodingOptions
         );
         const source = strategy.enableHighAccuracy ? 'gps' : 'network';
         const accuracyLevel = this.getAccuracyLevel(accuracy || 0);
@@ -522,6 +520,7 @@ class GeolocationService {
       accuracy: cached.accuracy,
       stats: cacheStats
     };
+  // class 結尾
   }
 
   /**

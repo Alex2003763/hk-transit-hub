@@ -144,13 +144,13 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
     return (
       <div className="flex flex-col gap-4 flex-grow">
         {/* 路線資訊卡 */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 flex-shrink-0 animate-fade-in">
+        <div className="bg-gradient-to-br from-teal-50 via-white to-teal-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 sm:p-6 rounded-3xl shadow-2xl border border-teal-200 dark:border-teal-700 flex-shrink-0 animate-fade-in transition-all duration-300">
           <div className="flex items-center">
             <div className="bg-green-600 dark:bg-green-500 text-white font-bold rounded-lg px-4 h-12 text-xl mr-4 flex-shrink-0 flex items-center justify-center">
               <span className="text-base">{selectedRoute.routeNo} ({selectedRoute.region_tc})</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-gray-900 dark:text-white font-bold text-xl leading-tight truncate" title={selectedRoute.orig_tc}>
+              <p className="text-gray-900 dark:text-white font-extrabold text-xl sm:text-2xl leading-tight truncate" title={selectedRoute.orig_tc}>
                 {selectedRoute.orig_tc}
               </p>
             </div>
@@ -160,7 +160,7 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
         {loading.details ? (
           <Loader message="載入站點詳情..." />
         ) : (
-          <div className="flex flex-col flex-grow min-h-0 border border-gray-200 dark:border-gray-700/50 bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden animate-fade-in">
+          <div className="flex flex-col flex-grow min-h-0 border border-teal-100 dark:border-teal-700/50 bg-gradient-to-br from-white via-teal-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-3xl shadow-2xl overflow-hidden animate-fade-in transition-all duration-300">
             {/* 地圖視圖 */}
             <div className="h-[250px] md:h-[300px] flex-shrink-0">
               <ErrorBoundary fallback={<MapSkeleton className="h-full w-full" />}>

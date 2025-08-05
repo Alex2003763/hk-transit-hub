@@ -132,4 +132,5 @@ export const CACHE_CONFIGS = {
   STOPS: { maxAge: 60 * 60 * 1000, maxSize: 200 }, // 1 hour
   ROUTE_STOPS: { maxAge: 15 * 60 * 1000, maxSize: 100 }, // 15 minutes
   ETA: { maxAge: 30 * 1000, maxSize: 500 }, // 30 seconds
+  NEWS: { maxAge: 5 * 60 * 1000, maxSize: 10 }, // 5 minutes for news
 } as const;

@@ -11,6 +11,7 @@ import {
   Theme
 } from './types';
 import { getRouteList, getAllStops, getRouteStops, getStopEta, preloadCriticalData } from './services/kmbApi';
+import { cacheManager } from './services/cacheManager';
 import { mtrStations, mtrLines, MtrStation } from './data/mtrStations';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -169,7 +170,10 @@ function App() {
         setError(null);
         setLoading(prev => ({ ...prev, initial: true }));
 
-        // Try to preload critical data first (this will use cache if available)
+        // Clear cache on app start
+        cacheManager.clear();
+        
+        // Preload critical data with fresh network requests
         await preloadCriticalData();
 
         const [routesRes, stopsRes] = await Promise.all([getRouteList(), getAllStops()]);

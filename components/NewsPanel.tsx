@@ -1,123 +1,44 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useNews } from '../hooks/useNews';
 import Loader from './Loader';
 import ErrorDisplay from './ErrorDisplay';
-import WeatherDisplay from './WeatherDisplay';
 import NewsCard from './NewsCard';
 import RefreshIcon from './icons/RefreshIcon';
 
-interface NewsItem {
-  id: string;
-  title: string;
-  content: string;
-  date: string;
-  status: string;
-  location: string;
-  landmark: string;
-}
-
 const NewsPanel: React.FC = () => {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<'tc' | 'en'>('tc');
+  const { news, loading, error, lastUpdated, refetch } = useNews(language);
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
-
-  const fetchNews = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`https://www.td.gov.hk/${language}/special_news/trafficnews.xml?t=${new Date().getTime()}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const xmlText = await response.text();
-      
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-      
-      const parserError = xmlDoc.getElementsByTagName('parsererror');
-      if (parserError.length > 0) {
-        throw new Error('Invalid XML response from server');
-      }
-      
-      const messages = xmlDoc.getElementsByTagName('message');
-      const newsItems: NewsItem[] = Array.from(messages).map(msg => ({
-        id: msg.getElementsByTagName('ID')[0]?.textContent || '',
-        title: language === 'tc'
-          ? (msg.getElementsByTagName('INCIDENT_HEADING_CN')[0]?.textContent || '')
-          : (msg.getElementsByTagName('INCIDENT_HEADING_EN')[0]?.textContent || ''),
-        content: language === 'tc'
-          ? (msg.getElementsByTagName('CONTENT_CN')[0]?.textContent || '')
-          : (msg.getElementsByTagName('CONTENT_EN')[0]?.textContent || ''),
-        date: msg.getElementsByTagName('ANNOUNCEMENT_DATE')[0]?.textContent || '',
-        status: language === 'tc'
-          ? (msg.getElementsByTagName('INCIDENT_STATUS_CN')[0]?.textContent || '')
-          : (msg.getElementsByTagName('INCIDENT_STATUS_EN')[0]?.textContent || ''),
-        location: language === 'tc'
-          ? (msg.getElementsByTagName('LOCATION_CN')[0]?.textContent || '')
-          : (msg.getElementsByTagName('LOCATION_EN')[0]?.textContent || ''),
-        landmark: language === 'tc'
-          ? (msg.getElementsByTagName('NEAR_LANDMARK_CN')[0]?.textContent || '')
-          : (msg.getElementsByTagName('NEAR_LANDMARK_EN')[0]?.textContent || ''),
-      }));
-      
-      setNews(newsItems);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching news:', err);
-      setError(`无法加载交通新闻: ${err instanceof Error ? err.message : '未知错误'}. 请稍后再试。`);
-    } finally {
-      setLoading(false);
-    }
-  }, [language]);
-
-  useEffect(() => {
-    fetchNews();
-  }, [fetchNews]);
 
   const toggleExpand = (id: string) => {
     setExpandedNews(expandedNews === id ? null : id);
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleString(language === 'tc' ? 'zh-HK' : 'en-GB', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        });
-      }
-      return dateString;
-    } catch (e) {
-      return dateString;
-    }
-  };
-
-  const handleRefresh = () => {
-    fetchNews();
+  const formatTime = (date: Date | null) => {
+    if (!date) return '';
+    return date.toLocaleString(language === 'tc' ? 'zh-HK' : 'en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 p-4">
+    <div className="flex flex-col h-full bg-gradient-to-br from-teal-50/80 via-white/70 to-teal-100/80 dark:from-gray-900/80 dark:via-gray-800/70 dark:to-gray-900/80 p-6 sm:p-8 rounded-3xl shadow-2xl border border-teal-200 dark:border-teal-700 transition-all duration-300 backdrop-blur-xl hover:shadow-3xl hover:scale-[1.01] hover:border-teal-400 dark:hover:border-teal-400">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-teal-900 dark:text-teal-200 drop-shadow-lg tracking-tight">
           {language === 'tc' ? '交通新聞' : 'Traffic News'}
         </h2>
         <div className="flex items-center space-x-2">
           <button
-            onClick={handleRefresh}
+            onClick={() => refetch()}
             className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             aria-label="Refresh News"
           >
             <RefreshIcon className="w-5 h-5" />
           </button>
-          <div className="flex rounded-lg bg-gray-200 dark:bg-gray-700 p-1">
+          <div className="flex rounded-lg bg-gradient-to-r from-teal-100 via-white to-teal-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-900 p-1 border border-teal-100 dark:border-teal-700">
             <button
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors min-w-[64px] ${
                 language === 'tc'
                   ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300'
@@ -127,7 +48,7 @@ const NewsPanel: React.FC = () => {
               中文
             </button>
             <button
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors min-w-[64px] ${
                 language === 'en'
                   ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-white'
                   : 'text-gray-700 dark:text-gray-300'
@@ -139,18 +60,24 @@ const NewsPanel: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Last Updated Timestamp */}
+      {lastUpdated && !loading && (
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          {language === 'tc' ? '最後更新於 ' : 'Last updated at '}
+          {formatTime(lastUpdated)}
+        </div>
+      )}
 
       {loading && <Loader message={language === 'tc' ? "載入交通新聞..." : "Loading traffic news..."} />}
       {error && <ErrorDisplay message={error} />}
-
+      
       {!loading && !error && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto flex-grow">
+        <div className="space-y-4 overflow-y-auto flex-grow">
           {news.length === 0 ? (
-            <div className="text-center py-8 col-span-full">
-              <p className="text-gray-500 dark:text-gray-400">
-                {language === 'tc' ? '暫無交通新聞' : 'No traffic news available'}
-              </p>
-            </div>
+            <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+              {language === 'tc' ? '暫無交通新聞' : 'No traffic news available'}
+            </p>
           ) : (
             news.map((item) => (
               <NewsCard
@@ -159,7 +86,6 @@ const NewsPanel: React.FC = () => {
                 isExpanded={expandedNews === item.id}
                 onToggleExpand={toggleExpand}
                 language={language}
-                formatDate={formatDate}
               />
             ))
           )}

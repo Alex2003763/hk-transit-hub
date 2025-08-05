@@ -158,21 +158,25 @@ const MtrPanel: React.FC = () => {
     };
 
     return (
-        <div className="space-y-4 pt-4">
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg space-y-4 border border-gray-200 dark:border-gray-700">
+        <div className="space-y-6 pt-4">
+            <div className="bg-gradient-to-br from-teal-50 via-white to-teal-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6 rounded-3xl shadow-2xl space-y-6 border border-teal-200 dark:border-teal-700 transition-all">
                 <div className="relative">
-                    <select
-                        value={selectedLine}
-                        onChange={(e) => setSelectedLine(e.target.value)}
-                        className="w-full appearance-none bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl p-4 font-semibold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-all"
-                    >
-                        <option value="">-- Select an MTR Line --</option>
-                        {mtrLines.map(line => (
-                            <option key={line.code} value={line.code}>{line.name}</option>
-                        ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 dark:text-gray-400">
-                        <svg className="fill-current h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    <div className="relative group">
+                        <select
+                            value={selectedLine}
+                            onChange={(e) => setSelectedLine(e.target.value)}
+                            className="w-full appearance-none bg-gradient-to-r from-teal-50 via-white to-teal-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border border-teal-300 dark:border-teal-700 rounded-2xl p-5 font-semibold text-gray-900 dark:text-white focus:outline-none focus:ring-4 focus:ring-[color:var(--accent)] shadow-xl transition-all text-lg sm:text-xl hover:border-[color:var(--accent)]"
+                        >
+                            <option value="" className="text-gray-400 dark:text-gray-500">-- 請選擇港鐵路線 --</option>
+                            {mtrLines.map(line => (
+                                <option key={line.code} value={line.code} className="font-bold text-base">{line.name}</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[color:var(--accent)] dark:text-[color:var(--accent)]">
+                            <svg className="fill-current h-6 w-6 drop-shadow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
@@ -188,17 +192,17 @@ const MtrPanel: React.FC = () => {
                                 onChange={handleSearchChange}
                                 onFocus={() => setIsStationListVisible(true)}
                                 placeholder={`Search station in ${getLineName(selectedLine)}`}
-                                className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl p-4 pl-12 font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-all"
+                                className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl p-4 pl-12 font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] transition-all text-base sm:text-lg"
                                 autoComplete="off"
                             />
                         </div>
                         {isStationListVisible && filteredStations.length > 0 && (
-                            <ul className="absolute z-30 w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-lg animate-fade-in">
+                            <ul className="absolute z-30 w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl mt-1 max-h-60 overflow-y-auto shadow-xl animate-fade-in">
                                 {filteredStations.map(station => (
                                     <li
                                         key={station.code}
                                         onClick={() => handleStationSelect(station)}
-                                        className="p-3 cursor-pointer text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600/50"
+                                        className="p-4 cursor-pointer text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600/50 rounded-lg transition-all"
                                     >
                                         <p className="font-medium">{stripParentheses(station.name_tc)}</p>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">{stripParentheses(station.name_en)}</p>
@@ -214,14 +218,14 @@ const MtrPanel: React.FC = () => {
             {error && <ErrorDisplay message={error} />}
 
             {stationData && typeof stationData === 'object' && !loading && !error && activeDirection && (
-                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700/50 animate-fade-in">
-                     <div className="flex bg-gray-200 dark:bg-gray-700/50 rounded-lg p-1 mb-2">
+                <div className="bg-gradient-to-br from-teal-50 via-white to-teal-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 rounded-2xl border border-teal-100 dark:border-teal-700/50 animate-fade-in shadow-xl">
+                     <div className="flex bg-gradient-to-r from-teal-100 via-white to-teal-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-900 rounded-xl p-2 mb-3 border border-teal-100 dark:border-teal-700">
                         {(['UP', 'DOWN'] as Direction[]).map(dir => (
                             directionNames[dir] && (
                             <button
                                 key={dir}
                                 onClick={() => setActiveDirection(dir)}
-                                className={`w-1/2 p-2.5 rounded-md font-semibold text-center transition-all text-sm truncate ${activeDirection === dir ? 'bg-white dark:bg-gray-800 text-teal-600 dark:text-[color:var(--accent)] shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'}`}
+                                className={`w-1/2 p-3 rounded-xl font-semibold text-center transition-all text-base sm:text-lg truncate ${activeDirection === dir ? 'bg-white dark:bg-gray-800 text-teal-600 dark:text-[color:var(--accent)] shadow-md' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300/50 dark:hover:bg-gray-600/50'}`}
                             >
                                 To: {directionNames[dir]}
                             </button>
@@ -236,14 +240,14 @@ const MtrPanel: React.FC = () => {
             )}
              {!selectedStation && !loading && selectedLine && (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                    <p className="font-semibold">Please select a station</p>
-                    <p className="text-sm">Choose a station to see train schedules.</p>
+                    <p className="font-semibold text-lg sm:text-xl">請選擇車站</p>
+                    <p className="text-base">選擇車站以查看列車時間表。</p>
                 </div>
             )}
             {!selectedLine && !loading && (
                  <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                    <p className="font-semibold">Start by selecting a line</p>
-                    <p className="text-sm">Choose an MTR line to begin.</p>
+                    <p className="font-semibold text-lg sm:text-xl">請先選擇路線</p>
+                    <p className="text-base">選擇港鐵路線以開始。</p>
                 </div>
             )}
         </div>
