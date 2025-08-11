@@ -17,6 +17,7 @@
     "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
+    "@dyad-sh/react-vite-component-tagger": "^0.8.0",
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
