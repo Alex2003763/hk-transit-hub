@@ -62,6 +62,7 @@ const StopListItem: React.FC<StopListItemProps & { ref: React.Ref<HTMLLIElement>
               etas={etas}
               onRefresh={() => onFetchEta(stop.stop, route.route, route.service_type)}
               refreshInterval={30000}
+              stopId={stop.stop}
             />
           )}
         </div>

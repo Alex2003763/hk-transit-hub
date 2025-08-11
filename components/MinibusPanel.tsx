@@ -243,6 +243,8 @@ const MinibusPanel: React.FC<MinibusPanelProps> = ({ onBack, showBack, onSelectR
                                   etas={etas[stop.stopId] || []}
                                   onRefresh={() => handleFetchEta(stop.stopId, selectedRoute.routeId)}
                                   refreshInterval={30000}
+                                  stopId={stop.stopId}
+                                  routeId={selectedRoute.routeId}
                                 />
                               )}
                             </div>

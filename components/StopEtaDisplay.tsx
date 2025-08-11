@@ -1,10 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { Eta, MinibusEta } from '../types';
+import { requestNotificationPermission, showNotification } from '../services/notificationService';
 
 interface StopEtaDisplayProps {
   etas: (Eta | MinibusEta)[];
-  onRefresh: () => void; // 新增刷新回调函数
-  refreshInterval?: number; // 刷新间隔（毫秒），可选，默认30000
+  onRefresh: () => void;
+  refreshInterval?: number;
+  stopId?: string;
+  routeId?: string;
+}
+
+interface Alarm {
+  routeId: string;
+  stopId: string;
+  etaTime: string;
+  notifyMinutes: number;
 }
 
 const isSameDay = (date1: Date, date2: Date): boolean => {
@@ -18,24 +29,19 @@ const calculateMinutesUntil = (etaTimestamp: string | null): { diff: number; uni
   const now = new Date();
   const etaTime = new Date(etaTimestamp);
   
-  // Handle cross-day scenarios
   if (!isSameDay(now, etaTime)) {
     const diffMs = etaTime.getTime() - now.getTime();
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     
-    // 如果是过去的时间
     if (diffDays < 0) {
       return { diff: 0, unit: 'Expired', isPast: true };
     }
-    // 如果是明天
     else if (diffDays === 1) {
       return { diff: 0, unit: 'Tomorrow', isPast: false };
     }
-    // 如果是未来几天
     else if (diffDays > 1 && diffDays <= 7) {
       return { diff: 0, unit: `${diffDays} days`, isPast: false };
     }
-    // 如果超过一周
     else if (diffDays > 7) {
       return { diff: 0, unit: 'Next week', isPast: false };
     }
@@ -50,18 +56,110 @@ const calculateMinutesUntil = (etaTimestamp: string | null): { diff: number; uni
   return { diff: diffMins, unit: 'min', isPast: false };
 };
 
-const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas, onRefresh, refreshInterval }) => {
-  // 自动刷新逻辑
+const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas, onRefresh, refreshInterval, stopId, routeId: propRouteId }) => {
+  const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [showAlarmMenu, setShowAlarmMenu] = useState<number | null>(null);
+  const buttonRefs = useRef<Array<React.RefObject<HTMLButtonElement>>>([]);
+
+  useEffect(() => {
+    const alarmList = JSON.parse(localStorage.getItem('busAlarms') || '[]') as Alarm[];
+    setAlarms(alarmList);
+  }, []);
+
   useEffect(() => {
     if (!etas || etas.length === 0) return;
     
-    const interval = refreshInterval || 30000; // 默认30秒刷新间隔
+    const interval = refreshInterval || 30000;
     const timer = setInterval(() => {
-      onRefresh(); // 调用父组件传递的刷新函数
+      onRefresh();
     }, interval);
 
     return () => clearInterval(timer);
   }, [etas, onRefresh, refreshInterval]);
+
+  useEffect(() => {
+    const checkAlarms = () => {
+      const now = new Date();
+      const alarmList = JSON.parse(localStorage.getItem('busAlarms') || '[]') as Alarm[];
+      
+      alarmList.forEach(alarm => {
+        const etaTime = new Date(alarm.etaTime);
+        const notifyTime = new Date(etaTime.getTime() - alarm.notifyMinutes * 60000);
+        
+        if (now >= notifyTime && now < etaTime) {
+          const routeInfo = 'route' in etas ? `路線 ${alarm.routeId}` : `小巴 ${alarm.routeId}`;
+          showNotification('巴士即將到站', {
+            body: `${routeInfo} 將於 ${alarm.notifyMinutes} 分鐘後到達`,
+            icon: '/icon.png'
+          });
+          
+          const updatedAlarms = alarmList.filter(a => a.etaTime !== alarm.etaTime);
+          localStorage.setItem('busAlarms', JSON.stringify(updatedAlarms));
+          setAlarms(updatedAlarms);
+        }
+      });
+    };
+
+    const alarmInterval = setInterval(checkAlarms, 60000);
+    return () => clearInterval(alarmInterval);
+  }, [etas]);
+
+  const handleAlarmClick = async (index: number) => {
+    const hasPermission = await requestNotificationPermission();
+    if (hasPermission) {
+      setShowAlarmMenu(showAlarmMenu === index ? null : index);
+    } else {
+      alert('請允許通知權限以設定鬧鐘。');
+    }
+  };
+
+  const setAlarm = (eta: Eta | MinibusEta, minutes: number) => {
+    if (!eta.eta) {
+      console.log('ETA is null or undefined');
+      return;
+    }
+
+    let finalRouteId: string = propRouteId || '';
+    if (!finalRouteId && 'route' in eta) {
+      finalRouteId = (eta as Eta).route;
+    }
+
+    let actualStopId: string = stopId || '';
+    if (!actualStopId && 'stop' in eta) {
+      actualStopId = (eta as Eta).stop;
+    }
+    
+    if (!finalRouteId || !actualStopId) {
+      console.error('Missing routeId or stopId for alarm', { finalRouteId, actualStopId });
+      return;
+    }
+
+    const newAlarm: Alarm = {
+      routeId: finalRouteId,
+      stopId: actualStopId,
+      etaTime: eta.eta,
+      notifyMinutes: minutes
+    };
+
+    const alarmList = JSON.parse(localStorage.getItem('busAlarms') || '[]') as Alarm[];
+    const updatedAlarms = [...alarmList.filter(a => a.etaTime !== eta.eta), newAlarm];
+    
+    localStorage.setItem('busAlarms', JSON.stringify(updatedAlarms));
+    setAlarms(updatedAlarms);
+    setShowAlarmMenu(null);
+  };
+
+  const removeAlarm = (etaTime: string) => {
+    const alarmList = JSON.parse(localStorage.getItem('busAlarms') || '[]') as Alarm[];
+    const updatedAlarms = alarmList.filter(alarm => alarm.etaTime !== etaTime);
+    localStorage.setItem('busAlarms', JSON.stringify(updatedAlarms));
+    setAlarms(updatedAlarms);
+    setShowAlarmMenu(null);
+  };
+
+  const isAlarmSet = (etaTime: string): boolean => {
+    return alarms.some(alarm => alarm.etaTime === etaTime);
+  };
 
   if (!etas || etas.length === 0) {
     return <div className="text-gray-500 dark:text-gray-400 py-6 text-center text-sm">No ETA information available. The service may have ended.</div>;
@@ -71,7 +169,6 @@ const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas, onRefresh, refres
     if ('eta_seq' in a && 'eta_seq' in b) {
       return a.eta_seq - b.eta_seq;
     }
-    // For MinibusEta, maintain original order
     return 0;
   });
   const stripParentheses = (text: string) => text.replace(/\s*\([^)]*\)\s*/g, '').trim();
@@ -80,16 +177,17 @@ const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas, onRefresh, refres
     <div className="space-y-4 pt-2">
       {sortedEtas.map((eta, index) => {
         const timeDiff = calculateMinutesUntil(eta.eta);
-        const remark = ('rmk_tc' in eta) ?
+        const remark = 'rmk_tc' in eta ?
           eta.rmk_tc.replace('原定班次', 'Scheduled') :
           ('remark_tc' in eta ? eta.remark_tc : '');
 
-        const destName = ('dest_tc' in eta) ? eta.dest_tc : '';
+        const destName = 'dest_tc' in eta ? eta.dest_tc : '';
+        const isSet = eta.eta ? isAlarmSet(eta.eta) : false;
         
         return (
           <div
             key={index}
-            className="flex items-center justify-between bg-gradient-to-br from-teal-50/80 via-white/70 to-teal-100/80 dark:from-gray-900/80 dark:via-gray-800/70 dark:to-gray-900/80 p-4 rounded-2xl shadow-xl border border-teal-200 dark:border-teal-700 transition-all duration-300 backdrop-blur-md hover:shadow-3xl hover:scale-105 hover:border-teal-400 dark:hover:border-teal-400"
+            className={`relative flex items-center justify-between bg-gradient-to-br from-teal-50/80 via-white/70 to-teal-100/80 dark:from-gray-900/80 dark:via-gray-800/70 dark:to-gray-900/80 p-4 rounded-2xl shadow-xl border border-teal-200 dark:border-teal-700 transition-all duration-300 hover:shadow-3xl hover:border-teal-400 dark:hover:border-teal-400 ${showAlarmMenu === index ? 'z-30' : ''}`}
           >
             <div className="flex items-center">
               <div className="flex-shrink-0 w-14 text-center">
@@ -109,6 +207,63 @@ const StopEtaDisplay: React.FC<StopEtaDisplayProps> = ({ etas, onRefresh, refres
                 </p>
                 {remark && <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">{remark}</p>}
               </div>
+            </div>
+            
+            <div className="relative">
+              <button
+                ref={el => {
+                  if (!buttonRefs.current[index]) {
+                    buttonRefs.current[index] = React.createRef();
+                  }
+                  if (buttonRefs.current[index].current !== el) {
+                    buttonRefs.current[index].current = el;
+                  }
+                }}
+                onClick={() => handleAlarmClick(index)}
+                className="p-2 rounded-full hover:bg-teal-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label={isSet ? "取消鬧鐘" : "設定鬧鐘"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isSet ? 'text-teal-600 dark:text-teal-400' : 'text-gray-500 dark:text-gray-400'}`} viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+              </button>
+              
+              {showAlarmMenu === index && buttonRefs.current[index]?.current &&
+                ReactDOM.createPortal(
+                  <div
+                    className="absolute w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-[100] border border-gray-200 dark:border-gray-700"
+                    style={{
+                      top: buttonRefs.current[index].current!.getBoundingClientRect().bottom + window.scrollY,
+                      left: buttonRefs.current[index].current!.getBoundingClientRect().left + window.scrollX,
+                      pointerEvents: 'auto'
+                    }}
+                  >
+                    {/* Alarm dropdown rendered */}
+                    <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 font-medium">提前通知</div>
+                    {[3, 5, 10].map(minutes => {
+                      console.log('提前通知選項:', minutes);
+                      return (
+                        <button
+                          key={minutes}
+                          onClick={() => setAlarm(eta, minutes)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-teal-100 dark:hover:bg-gray-700"
+                        >
+                          {minutes} 分鐘
+                        </button>
+                      );
+                    })}
+                    {isSet && (
+                      <button
+                        onClick={() => eta.eta && removeAlarm(eta.eta)}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50"
+                      >
+                        取消鬧鐘
+                      </button>
+                    )}
+                  </div>,
+                  document.body
+                )
+              }
             </div>
           </div>
         );

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AlarmPanel from './AlarmPanel';
 
 type Theme = 'light' | 'dark';
 interface SettingsPanelProps {
@@ -11,6 +12,7 @@ interface SettingsPanelProps {
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ currentApiKey, onSaveApiKey, theme, setTheme }) => {
     const [apiKeyInput, setApiKeyInput] = useState(currentApiKey);
     const [saved, setSaved] = useState(false);
+    const [showAlarmPanel, setShowAlarmPanel] = useState(false);
 
     useEffect(() => {
         setApiKeyInput(currentApiKey);
@@ -24,15 +26,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ currentApiKey, onSaveApiK
     
     const handleThemeChange = () => {
         const newTheme = theme === 'light' ? 'dark' : 'light';
-
         setTheme(newTheme);
     };
 
     const handleResetTheme = () => {
-        // Clear stored theme preference and use default (dark) theme
         localStorage.removeItem('theme');
         setTheme('dark');
     };
+
+    if (showAlarmPanel) {
+        return <AlarmPanel onBack={() => setShowAlarmPanel(false)} />;
+    }
 
   return (
     <div className="bg-gradient-to-br from-teal-50 via-white to-teal-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-8 rounded-3xl shadow-2xl space-y-10 animate-fade-in border border-teal-200 dark:border-teal-700 mt-6 transition-all">
@@ -57,6 +61,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ currentApiKey, onSaveApiK
               <span className={`inline-block w-7 h-7 transform transition-transform duration-300 ease-in-out bg-white rounded-full shadow ${theme === 'dark' ? 'translate-x-8' : 'translate-x-1'}`} />
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-4">鬧鐘設定</h3>
+        <div className="space-y-4">
+          <button 
+            onClick={() => setShowAlarmPanel(true)}
+            className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-4 rounded-xl transition duration-300 ease-in-out transform hover:scale-105"
+          >
+            管理鬧鐘
+          </button>
         </div>
       </div>
 
