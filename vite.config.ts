@@ -1,12 +1,12 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';
+
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      plugins: [dyadComponentTagger(), 
+      plugins: [
         VitePWA({
           registerType: 'autoUpdate',
           workbox: {
@@ -159,8 +159,7 @@ export default defineConfig(({ mode }) => {
           output: {
             manualChunks: {
               vendor: ['react', 'react-dom'],
-              leaflet: ['leaflet', 'react-leaflet'],
-              utils: ['lodash.debounce', 'lodash.sortby']
+              leaflet: ['leaflet', 'react-leaflet']
             },
           },
         },
